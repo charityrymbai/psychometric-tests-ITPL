@@ -1,8 +1,8 @@
 import express from 'express';
-import groupsRouter from './routes/groups';
-import sectionsRouter from './routes/sections';
-import tagsRouter from './routes/tags';
-import questionsRouter from './routes/questions';
+import groupsRouter from './routes/groups.js';
+import sectionsRouter from './routes/sections.js';
+import tagsRouter from './routes/tags.js';
+import questionsRouter from './routes/questions.js';
 
 const app = express();
 const port = 3002;

@@ -13,34 +13,19 @@
         "id": 101,
         "name": "Verbal Reasoning",
         "description": "Word understanding and language skills",
-        "duration": "15 mins",
-        "questions": 25,
-        "questionList": [
-          { "id": "1", "text": "Which word is most similar in meaning to 'Happy'?", "type": "MCQ" },
-          { "id": "2", "text": "Choose the word that doesn't belong: Cat, Dog, Bird, Car", "type": "MCQ" },
-          { "id": "3", "text": "Complete the sentence: The sun is ___", "type": "Fill in blank" }
-        ]
+        "questions": 25
       },
       {
         "id": 102,
         "name": "Numerical Ability",
         "description": "Basic math and number concepts",
-        "duration": "20 mins",
-        "questions": 20,
-        "questionList": [
-          { "id": "4", "text": "What comes next: 2, 4, 6, 8, ?", "type": "MCQ" },
-          { "id": "5", "text": "If you have 5 apples and eat 2, how many are left?", "type": "MCQ" }
-        ]
+        "questions": 20
       },
       {
         "id": 103,
         "name": "Attention & Memory",
         "description": "Focus and recall abilities",
-        "duration": "12 mins",
-        "questions": 15,
-        "questionList": [
-          { "id": "7", "text": "Remember these colors: Red, Blue, Green. What was the second color?", "type": "Memory" }
-        ]
+        "questions": 15
       }
     ]
   },
@@ -48,8 +33,6 @@
     "id": 2,
     "name": "Middle School",
     "description": "Comprehensive evaluations for developing minds",
-    "classes": "Standards 6-8",
-    "ageRange": "11-14 years",
     "color": "bg-green-500",
     "assessments": ["Logical Reasoning", "Personality Assessment", "Interest Exploration"],
     "totalTests": 12,
@@ -58,11 +41,7 @@
         "id": 201,
         "name": "Logical Reasoning",
         "description": "Problem-solving and analytical thinking",
-        "duration": "25 mins",
-        "questions": 30,
-        "questionList": [
-          { "id": "9", "text": "If all roses are flowers and some flowers are red, then...", "type": "Logic" }
-        ]
+        "questions": 30
       }
     ]
   },
@@ -70,8 +49,6 @@
     "id": 3,
     "name": "Secondary School",
     "description": "Advanced assessments for career guidance",
-    "classes": "Standards 9-12",
-    "ageRange": "14-18 years",
     "color": "bg-purple-500",
     "assessments": ["Aptitude Testing", "Career Interests", "Learning Styles", "Advanced Personality"],
     "totalTests": 15,

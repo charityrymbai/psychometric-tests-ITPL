@@ -18,7 +18,7 @@ if (!DB_HOST || !DB_USERNAME || !DB_PASSWORD || !DB_DATABASE) {
 
 const port: number = DB_PORT ? parseInt(DB_PORT, 10) : 3306;
 
-const db: Promise<Connection> = mysql.createConnection({
+const dbPromise = mysql.createConnection({
   host: DB_HOST,
   user: DB_USERNAME,
   password: DB_PASSWORD,
@@ -26,4 +26,4 @@ const db: Promise<Connection> = mysql.createConnection({
   port
 });
 
-export default db;
+export default dbPromise;
