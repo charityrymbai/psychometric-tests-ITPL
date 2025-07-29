@@ -1,14 +1,16 @@
 import dbPromise from "../config/db.js";
 
-export const getSections = async () => {
+export const getAllSections = async () => {
   const db = await dbPromise;
   const [rows] = await db.execute("SELECT * FROM section_settings");
-  return rows;
+  return rows as any[];
 };
 
 export const createSection = async (groupId, sectionData) => {
   const db = await dbPromise;
-  const [result] = await db.execute("INSERT INTO section_settings (group_id, name, description) VALUES (?, ?, ?)", [groupId, sectionData.name, sectionData.description]);
+  const [result] = await db.execute(
+    "INSERT INTO section_settings (group_id, name, description, isSingleOptionCorrect) VALUES (?, ?, ?, ?)", 
+    [groupId, sectionData.name, sectionData.description, sectionData.isSingleOptionCorrect?? true]);
   return { id: result.insertId, ...sectionData };
 };
 

@@ -3,9 +3,10 @@ import * as questionsController from "../controllers/questionsController.js";
 
 const router = Router();
 
-router.delete('/:id', questionsController.deleteQuestion);
 router.get('/', questionsController.getQuestions);
-router.post('/', questionsController.createQuestion);
-router.put('/', questionsController.updateQuestion);
+router.post('/:sectionId', questionsController.createQuestion);
+router.put('/:questionId', questionsController.updateQuestion);
+router.delete('/:id', questionsController.deleteQuestion);
+router.get('/:sectionId', questionsController.getQuestionsBySection);
 
 export default router;

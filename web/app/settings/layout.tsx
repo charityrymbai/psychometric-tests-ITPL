@@ -4,18 +4,24 @@ import { ReactNode, useState } from "react"
 import {TreeSidebar} from "@/components/tree-sidebar"
 import { GroupForm } from "@/components/group-form"
 import { SectionForm } from "@/components/section-form"
-import groupsRaw from "@/data/groups.json";
+import SectionDetails from "@/components/section-details"
+// import groupsRaw from "@/data/groups.json";
+import { useEffect } from "react";
 import QuestionCreatePage from "./question-create";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [editQuestionSection, setEditQuestionSection] = useState<any | null>(null);
+  const [showSectionDetails, setShowSectionDetails] = useState(false);
+  const [sectionDetailsData, setSectionDetailsData] = useState<any | null>(null);
   function handleCreateQuestion(section: any) {
     setShowGroupForm(false);
     setEditGroupData(null);
     setShowSectionForm(false);
     setEditSectionData(null);
     setEditSectionMode('add');
+    setShowSectionDetails(false);
+    setSectionDetailsData(null);
     setEditQuestionSection(section);
     setShowQuestionForm(true);
   }
@@ -23,17 +29,26 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     setShowQuestionForm(false);
     setEditQuestionSection(null);
   }
-  // Transform groupsRaw to TreeSidebar format
-  const groups = groupsRaw.map((group: any) => ({
-    id: String(group.id),
-    name: group.name,
-    sections: (group.sections || []).map((section: any) => ({
-      id: String(section.id),
-      name: section.name,
-      description: section.description || "",
-      questions: section.questions || 0
-    }))
-  }));
+  // Fetch groups and sections from API
+  const [groups, setGroups] = useState<any[]>([]);
+  useEffect(() => {
+    fetch("http://localhost:3002/all")
+      .then(res => res.json())
+      .then(data => {
+        // Ensure all ids are strings for TreeSidebar
+        const formatted = (data || []).map((group: any) => ({
+          id: String(group.id),
+          name: group.name,
+          sections: (group.sections || []).map((section: any) => ({
+            id: String(section.id),
+            name: section.name,
+            description: section.description || "",
+            questions: section.questions || 0
+          }))
+        }));
+        setGroups(formatted);
+      });
+  }, []);
 
   const [selectedItem, setSelectedItem] = useState<{ type: string; id: string } | null>(null);
   const [showGroupForm, setShowGroupForm] = useState(false);
@@ -46,6 +61,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     setEditGroupData(null);
     setShowQuestionForm(false);
     setEditQuestionSection(null);
+    setShowSectionDetails(false);
+    setSectionDetailsData(null);
     setEditSectionData(null);
     setEditSectionMode('add');
     setShowSectionForm(true);
@@ -67,6 +84,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     setEditGroupData(null);
     setShowQuestionForm(false);
     setEditQuestionSection(null);
+    setShowSectionDetails(false);
+    setSectionDetailsData(null);
     setEditSectionData(section);
     setEditSectionMode('edit');
     setShowSectionForm(true);
@@ -74,6 +93,24 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
 
   function handleItemSelect(item: { type: string; id: string }) {
     setSelectedItem(item);
+    if (item.type === 'section') {
+      // Find the section data
+      const section = groups.flatMap(g => g.sections).find(s => s.id === item.id);
+      if (section) {
+        setShowGroupForm(false);
+        setEditGroupData(null);
+        setShowSectionForm(false);
+        setEditSectionData(null);
+        setEditSectionMode('add');
+        setShowQuestionForm(false);
+        setEditQuestionSection(null);
+        setShowSectionDetails(true);
+        setSectionDetailsData(section);
+      }
+    } else {
+      setShowSectionDetails(false);
+      setSectionDetailsData(null);
+    }
   }
 
   function handleAddGroup() {
@@ -82,6 +119,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     setEditSectionMode('add');
     setShowQuestionForm(false);
     setEditQuestionSection(null);
+    setShowSectionDetails(false);
+    setSectionDetailsData(null);
     setEditGroupData(null);
     setShowGroupForm(true);
   }
@@ -147,6 +186,19 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             open={true}
             section={editQuestionSection}
             onClose={handleCloseQuestionForm}
+          />
+        </div>
+      )}
+      {showSectionDetails && sectionDetailsData && (
+        <div className="w-full border-l bg-white p-6 grid place-items-center">
+          <SectionDetails
+            open={true}
+            section={sectionDetailsData}
+            onClose={() => {
+              setShowSectionDetails(false);
+              setSectionDetailsData(null);
+              setSelectedItem(null);
+            }}
           />
         </div>
       )}

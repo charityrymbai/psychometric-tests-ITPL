@@ -3,7 +3,7 @@ import dbPromise from '../config/db.js';
 export const getAllGroups = async () => {
   const db = await dbPromise;
   const [rows] = await db.execute(`SELECT * FROM \`groups\``);
-  return rows;
+  return rows as any[];
 };
 
 

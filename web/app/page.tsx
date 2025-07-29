@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { TreeSidebar } from "@/components/tree-sidebar"
 import { MainContent } from "@/components/main-content"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,47 +18,40 @@ export default function HomePage() {
     data?: any
   }>({ type: "home" })
 
-  const groups = [
-    {
-      id: "primary",
-      name: "Primary School",
-      description: "Foundational assessments for young learners",
-      classes: "Standards 1-5",
-      ageRange: "6-11 years",
-      icon: BookOpen,
-      color: "bg-blue-500",
-      assessments: ["Verbal Reasoning", "Numerical Ability", "Attention & Memory", "Basic Personality Traits"],
-      totalTests: 8,
-    },
-    {
-      id: "middle",
-      name: "Middle School",
-      description: "Comprehensive evaluations for developing minds",
-      classes: "Standards 6-8",
-      ageRange: "11-14 years",
-      icon: Users,
-      color: "bg-green-500",
-      assessments: ["Logical Reasoning", "Personality Assessment", "Interest Exploration", "Emotional Intelligence"],
-      totalTests: 12,
-    },
-    {
-      id: "secondary",
-      name: "Secondary School",
-      description: "Advanced assessments for career guidance",
-      classes: "Standards 9-12",
-      ageRange: "14-18 years",
-      icon: GraduationCap,
-      color: "bg-purple-500",
-      assessments: [
-        "Aptitude Testing",
-        "Career Interests",
-        "Learning Styles",
-        "Advanced Personality",
-        "Emotional Intelligence",
-      ],
-      totalTests: 15,
-    },
-  ]
+  const [groups, setGroups] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchGroups() {
+      try {
+        const res = await fetch("http://localhost:3002/groups/getAll");
+        const data = await res.json();
+        console.log("Fetched groups:", data);
+        // Map backend data to UI fields
+        const iconMap: Record<string, any> = {
+          1: BookOpen,
+          2: Users,
+          3: GraduationCap,
+        };
+        const colorMap: Record<string, string> = {
+          1: "bg-blue-500",
+          2: "bg-green-500",
+          3: "bg-purple-500",
+        };
+        const mapped = data.map((g: any, idx: number) => ({
+          id: g.id || g.ID || g._id || idx + 1,
+          name: g.name,
+          description: g.description,
+          classes: g.starting_class && g.ending_class ? `Standards ${g.starting_class}-${g.ending_class}` : undefined,
+          icon: iconMap[idx + 1] || BookOpen,
+          color: colorMap[idx + 1] || "bg-blue-500",
+        }));
+        setGroups(mapped);
+      } catch (e) {
+        setGroups([]);
+      }
+    }
+    fetchGroups();
+  }, []);
 
   const features = [
     {
@@ -130,28 +123,7 @@ export default function HomePage() {
                       </div>
                       <CardDescription className="text-base">{group.description}</CardDescription>
                     </CardHeader>
-
                     <CardContent className="space-y-4">
-                      <div className="text-sm text-gray-600">
-                        <p>
-                          <strong>Age Range:</strong> {group.ageRange}
-                        </p>
-                        <p>
-                          <strong>Total Tests:</strong> {group.totalTests}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2">Assessment Areas:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {group.assessments.map((assessment, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {assessment}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
                       <Link href={`/tests/${group.id}`} className="block">
                         <Button className="w-full mt-4" size="lg">
                           Start Assessment

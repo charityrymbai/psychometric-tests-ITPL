@@ -7,7 +7,7 @@ export const getSections = async (req, res) => {
 };
 
 export const createSection = (req, res) => {
-  const { groupId } = req.params;
+  const groupId = req.params.groupId;
   const sectionData = req.body;
   sectionsService.createSection(groupId, sectionData)
     .then(section => res.status(201).json(section))
