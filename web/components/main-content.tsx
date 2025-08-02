@@ -1,4 +1,6 @@
+
 "use client"
+import { useState, useEffect } from "react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,11 +21,10 @@ import {
   Plus,
 } from "lucide-react"
 
-import { TestInterface } from "@/components/test-interface"
-
 import { useRouter } from "next/navigation"
-import { TestResults } from "@/components/test-results"
-import groupsData from "../data/groups.json"
+import { TestResults } from "./test-results"
+import { TestInterface } from "./test-interface"
+
 
 
 
@@ -31,11 +32,12 @@ interface MainContentProps {
   selectedItem: {
     type: "home" | "group" | "section" | "questions" | "settings" | "test" | "results"
     id?: string
-    groupId?: string
+      group?: string
     sectionId?: string
     data?: any
   }
   onItemSelect: (item: any) => void
+  children?: React.ReactNode
 }
 
 export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
@@ -46,11 +48,28 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
     Users,
     GraduationCap,
   };
-  // Attach icon components to each group
-  const groups = (groupsData as any[]).map((group) => ({
-    ...group,
-    icon: iconMap[group.icon || ""] || BookOpen,
-  }));
+
+  const [groups, setGroups] = useState<any[]>([]);
+  useEffect(() => {
+    async function fetchGroups() {
+      try {
+        // Fetch groups only
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/groups/getAll`);
+        const data = await res.json();
+        const groupsWithMeta = data.map((g: any, idx: number) => ({
+          ...g,
+          icon: BookOpen,
+          color: ["bg-blue-500", "bg-green-500", "bg-purple-500"][idx % 3],
+          classes: g.starting_class && g.ending_class ? `Standards ${g.starting_class}-${g.ending_class}` : undefined,
+          totalTests: g.sectionCount
+        }));
+        setGroups(groupsWithMeta);
+      } catch {
+        setGroups([]);
+      }
+    }
+    fetchGroups();
+  }, []);
 
   // Dashboard
   const renderDashboard = () => (
@@ -83,13 +102,10 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
               <p className="text-sm text-gray-600 mb-4">{group.description}</p>
               <div className="text-sm text-gray-600 mb-4">
                 <p>
-                  <strong>Age Range:</strong> {group.ageRange}
-                </p>
-                <p>
                   <strong>Total Tests:</strong> {group.totalTests}
                 </p>
               </div>
-              <Button className="w-full" onClick={() => router.push(`/tests/${group.id}`)}>
+              <Button className="w-full" onClick={() => router.push(`/groups/${group.id}`)}>
                 Explore Assessments
               </Button>
             </CardContent>
@@ -175,7 +191,7 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
                       onItemSelect({
                         type: "section",
                         id: section.id,
-                        groupId: group.id,
+                          group: group.id,
                       })
                     }
                   >
@@ -191,7 +207,7 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
   }
 
   const renderSectionView = () => {
-    const group = groups.find((g: any) => g.id === selectedItem.groupId);
+    const group = groups.find((g: any) => g.id === selectedItem.group);
     const section = group?.sections.find((s: any) => s.id === selectedItem.id);
 
     if (!group || !section) return <div>Section not found</div>
@@ -241,7 +257,7 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
               onClick={() =>
                 onItemSelect({
                   type: "test",
-                  groupId: group.id,
+                    group: group.id,
                   sectionId: section.id,
                 })
               }
@@ -256,7 +272,7 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
   }
 
   const renderQuestionsView = () => {
-    const group = groups.find((g: any) => g.id === selectedItem.groupId);
+    const group = groups.find((g: any) => g.id === selectedItem.group);
     const section = group?.sections.find((s: any) => s.id === selectedItem.sectionId);
 
     if (!group || !section) return <div>Questions not found</div>
@@ -351,11 +367,10 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
   const renderTestInterface = () => {
     return (
       <TestInterface
-        groupId={selectedItem.groupId!}
+          groupId={selectedItem.group!}
         sectionId={selectedItem.sectionId!}
-        onTestComplete={(results) => {
+        onTestComplete={(results: any) => {
           // Handle test completion
-          console.log("Test completed:", results)
           onItemSelect({ type: "results", data: results })
         }}
         onItemSelect={onItemSelect}
@@ -419,3 +434,4 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
       )
   }
 
+}

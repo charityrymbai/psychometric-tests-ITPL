@@ -1,6 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+// Use NEXT_PUBLIC_ prefix for env variables in Next.js frontend
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+
+if (!BACKEND_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_BACKEND_BASE_URL is not defined in environment variables");
+}
 import { TreeSidebar } from "@/components/tree-sidebar"
 import { MainContent } from "@/components/main-content"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +29,7 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const res = await fetch("http://localhost:3002/groups/getAll");
+        const res = await fetch(`${BACKEND_BASE_URL}/groups/getAll`);
         const data = await res.json();
         console.log("Fetched groups:", data);
         // Map backend data to UI fields
@@ -44,7 +50,10 @@ export default function HomePage() {
           classes: g.starting_class && g.ending_class ? `Standards ${g.starting_class}-${g.ending_class}` : undefined,
           icon: iconMap[idx + 1] || BookOpen,
           color: colorMap[idx + 1] || "bg-blue-500",
+          tests: g.tests || [],
+          testCount: Array.isArray(g.tests) ? g.tests.length : (g.testCount || 0),
         }));
+        console.log("Mapped groups:", mapped);
         setGroups(mapped);
       } catch (e) {
         setGroups([]);
@@ -115,7 +124,12 @@ export default function HomePage() {
                           <group.icon className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-xl">{group.name}</CardTitle>
+                          <CardTitle className="text-xl flex items-center gap-2">
+                            {group.name}
+                            <Badge variant="outline" className="ml-2 text-xs font-normal">
+                              {group.testCount} Tests
+                            </Badge>
+                          </CardTitle>
                           <Badge variant="secondary" className="mt-1">
                             {group.classes}
                           </Badge>
@@ -138,12 +152,6 @@ export default function HomePage() {
 
           {/* Footer */}
           <footer className="bg-gray-50 border-t mt-16">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="text-center text-gray-600">
-                <p className="mb-2">Aligned with NCERT, CBSE, and international assessment standards</p>
-                <p className="text-sm">Confidential • Age-appropriate • Actionable insights</p>
-              </div>
-            </div>
           </footer>
         </div>
       </MainContent>

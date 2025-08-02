@@ -1,12 +1,8 @@
 "use client"
 
-
-
-
 import { useState } from "react";
 import { GroupForm } from "../../components/group-form";
 import { TreeSidebar } from "../../components/tree-sidebar";
-// ...existing code...
 
 export default function SettingsPage() {
   const [showGroupForm, setShowGroupForm] = useState(false);

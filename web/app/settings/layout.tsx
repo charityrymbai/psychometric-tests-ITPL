@@ -7,6 +7,11 @@ import { SectionForm } from "@/components/section-form"
 import SectionDetails from "@/components/section-details"
 // import groupsRaw from "@/data/groups.json";
 import { useEffect } from "react";
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+
+if (!BACKEND_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_BACKEND_BASE_URL is not defined in environment variables");
+}
 import QuestionCreatePage from "./question-create";
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
@@ -31,23 +36,25 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   }
   // Fetch groups and sections from API
   const [groups, setGroups] = useState<any[]>([]);
+  const fetchGroups = async () => {
+    const res = await fetch(`${BACKEND_BASE_URL}/all`);
+    const data = await res.json();
+    console.log(sectionDetailsData, "Fetched groups:", data);
+    const formatted = (data || []).map((group: any) => ({
+      id: String(group.id),
+      name: group.name,
+      sections: (group.sections || []).map((section: any) => ({
+        id: String(section.id),
+        name: section.name,
+        description: section.description || "",
+        questions: section.questions || 0,
+        groupId: String(group.id)
+      }))
+    }));
+    setGroups(formatted);
+  };
   useEffect(() => {
-    fetch("http://localhost:3002/all")
-      .then(res => res.json())
-      .then(data => {
-        // Ensure all ids are strings for TreeSidebar
-        const formatted = (data || []).map((group: any) => ({
-          id: String(group.id),
-          name: group.name,
-          sections: (group.sections || []).map((section: any) => ({
-            id: String(section.id),
-            name: section.name,
-            description: section.description || "",
-            questions: section.questions || 0
-          }))
-        }));
-        setGroups(formatted);
-      });
+    fetchGroups();
   }, []);
 
   const [selectedItem, setSelectedItem] = useState<{ type: string; id: string } | null>(null);
@@ -56,7 +63,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   const [showSectionForm, setShowSectionForm] = useState(false);
   const [editSectionData, setEditSectionData] = useState<any | null>(null);
   const [editSectionMode, setEditSectionMode] = useState<'add' | 'edit'>('add');
-  function handleAddSection() {
+  const [selectedGroupIdForSection, setSelectedGroupIdForSection] = useState<string | null>(null);
+  function handleAddSection(groupId: string) {
     setShowGroupForm(false);
     setEditGroupData(null);
     setShowQuestionForm(false);
@@ -65,28 +73,132 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     setSectionDetailsData(null);
     setEditSectionData(null);
     setEditSectionMode('add');
+    setSelectedGroupIdForSection(groupId);
     setShowSectionForm(true);
   }
   function handleCloseSectionForm() {
     setShowSectionForm(false);
     setEditSectionData(null);
     setEditSectionMode('add');
+    setSelectedGroupIdForSection(null); // Clear the selected group ID
   }
-  function handleSubmitSection(section: any) {
-    // TODO: handle section submission (e.g., API call)
+
+async function addSection(section: any, groupId: string) {
+  const myHeaders = new Headers();
+  myHeaders.append("Content-Type", "application/json");
+  const payload: any = {
+    name: section.name,
+    description: section.description,
+    isSingleOptionCorrect: !!section.isSingleOptionCorrect
+  };
+  
+  // Include tags if the section is not single option correct and has tags
+  if (!section.isSingleOptionCorrect && Array.isArray(section.tags) && section.tags.length > 0) {
+    payload.tags = section.tags.map((tag: any) => ({
+      name: tag.label || tag.name,
+      description: tag.description
+    }));
+  }
+  
+  const raw = JSON.stringify(payload);
+  const requestOptions = {
+    method: "POST",
+    headers: myHeaders,
+    body: raw
+  };
+  const res = await fetch(`${BACKEND_BASE_URL}/sections/create/${groupId}`, requestOptions);
+  if (!res.ok) throw new Error('Failed to add section');
+  return await res.json();
+}
+
+async function handleSubmitSection(section: any) {
+  try {
+    if (editSectionMode === 'edit' && editSectionData?.id) {
+      // Update existing section
+      const groupId = section.groupId || editSectionData.groupId || selectedGroupIdForSection || (selectedItem && selectedItem.type === 'group' && selectedItem.id);
+      if (!groupId) throw new Error('No groupId found for section update');
+      
+      const myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/json");
+      
+      const payload: any = {
+        name: section.name,
+        description: section.description,
+        isSingleOptionCorrect: !!section.isSingleOptionCorrect
+      };
+      
+      // Include tags if the section is not single option correct and has tags
+      if (!section.isSingleOptionCorrect && Array.isArray(section.tags) && section.tags.length > 0) {
+        payload.tags = section.tags.map((tag: any) => ({
+          name: tag.label || tag.name,
+          description: tag.description
+        }));
+      }
+      
+      const res = await fetch(`${BACKEND_BASE_URL}/sections/${groupId}/${editSectionData.id}`, {
+        method: "PUT",
+        headers: myHeaders,
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) throw new Error('Failed to update section');
+    } else {
+      // Create new section
+      const groupId = section.groupId || (editSectionData && editSectionData.groupId) || selectedGroupIdForSection || (selectedItem && selectedItem.type === 'group' && selectedItem.id);
+      if (!groupId) throw new Error('No groupId found for section');
+      await addSection(section, groupId);
+    }
+    
+    await fetchGroups(); // Refresh groups after adding/updating section
     setShowSectionForm(false);
     setEditSectionData(null);
     setEditSectionMode('add');
+    setSelectedGroupIdForSection(null); // Clear the selected group ID
+  } catch (err) {
+    alert('Failed to save section: ' + err);
+    console.error(err);
   }
+}
 
-  function handleEditSection(section: any) {
+  async function handleEditSection(section: any) {
     setShowGroupForm(false);
     setEditGroupData(null);
     setShowQuestionForm(false);
     setEditQuestionSection(null);
     setShowSectionDetails(false);
     setSectionDetailsData(null);
-    setEditSectionData(section);
+    
+    // Ensure groupId is present
+    let sectionWithGroupId = section;
+    if (!section.groupId) {
+      const parentGroup = groups.find(g => g.sections.some((s: any) => s.id === section.id));
+      if (parentGroup) {
+        sectionWithGroupId = { ...section, groupId: parentGroup.id };
+      }
+    }
+    
+    try {
+      // Fetch the full section data including tags
+      const res = await fetch(`${BACKEND_BASE_URL}/questions/${section.id}`);
+      if (res.ok) {
+        const sectionData = await res.json();
+        // Merge the fetched data with the existing section data
+        const fullSectionData = {
+          ...sectionWithGroupId,
+          isSingleOptionCorrect: sectionData.isSingleOptionCorrect,
+          tags: sectionData.tags || []
+        };
+        setEditSectionData(fullSectionData);
+      } else {
+        // Fallback to using existing data if fetch fails
+        setEditSectionData(sectionWithGroupId);
+      }
+    } catch (error) {
+      console.error('Failed to fetch section tags:', error);
+      // Fallback to using existing data
+      setEditSectionData(sectionWithGroupId);
+    }
+    
     setEditSectionMode('edit');
     setShowSectionForm(true);
   }

@@ -1,0 +1,14 @@
+{
+  "name": "@psychometric-tests/types",
+  "version": "1.0.0",
+  "description": "Shared types for psychometric tests application",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit"
+  },
+  "keywords": ["types", "typescript", "psychometric", "shared"],
+  "author": "",
+  "license": "MIT"
+}

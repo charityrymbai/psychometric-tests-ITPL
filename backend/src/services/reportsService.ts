@@ -1,0 +1,169 @@
+import dbPromise from '../config/db.js';
+import { TestResult } from '../zod/reports.js';
+
+export const createReport = async (data: TestResult, version: number = 0) => {
+  try {
+    const db = await dbPromise;
+    // Always stringify data to ensure valid JSON
+    const safeData = JSON.stringify(typeof data === 'string' ? JSON.parse(data) : data);
+    const [result] = await db.execute(
+      `INSERT INTO reports_generated (data, version) VALUES (?, ?)`,
+      [safeData, version]
+    );
+
+    return {
+      success: true,
+      message: "Report created successfully",
+      reportId: (result as any).insertId,
+    };
+  } catch (error) {
+    console.error("Error inserting report:", error);
+    return {
+      success: false,
+      message: "Failed to create report",
+      error,
+    };
+  }
+};
+
+export const getReport = async (id: number) => {
+  try {
+    const db = await dbPromise;
+    const [rows] = await db.execute(
+      `SELECT * FROM reports_generated WHERE id = ?`,
+      [id]
+    );
+
+    const reports = rows as any[];
+    if (reports.length === 0) {
+      return {
+        success: false,
+        message: "Report not found",
+        data: null,
+      };
+    }
+
+    const report = reports[0];
+    let parsedData;
+    try {
+      parsedData = typeof report.data === 'string' ? JSON.parse(report.data) : report.data;
+    } catch (parseError) {
+      console.error("Error parsing report data:", parseError);
+      return {
+        success: false,
+        message: "Failed to parse report data",
+        error: parseError,
+      };
+    }
+    return {
+      success: true,
+      message: "Report retrieved successfully",
+      data: {
+        id: report.id,
+        data: parsedData,
+        version: report.version,
+        createdAt: report.created_at || report.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error("Error retrieving report:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve report",
+      error,
+    };
+  }
+};
+
+export const getAllReports = async (limit: number = 50, offset: number = 0) => {
+  try {
+    const db = await dbPromise;
+    const [rows] = await db.execute(
+      `SELECT id, 
+              JSON_EXTRACT(data, '$.testTitle') as testTitle, 
+              JSON_EXTRACT(data, '$.groupName') as groupName,
+              JSON_EXTRACT(data, '$.completedAt') as completedAt,
+              JSON_EXTRACT(data, '$.totalScore') as totalScore,
+              JSON_EXTRACT(data, '$.totalQuestions') as totalQuestions,
+              version, created_at
+      FROM reports_generated 
+      ORDER BY created_at DESC`
+    );
+
+    return {
+      success: true,
+      message: "Reports retrieved successfully",
+      data: rows,
+    };
+  } catch (error) {
+    console.error("Error retrieving reports:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve reports",
+      error,
+    };
+  }
+};
+
+export const getReportsByTestId = async (testId: string) => {
+  try {
+    const db = await dbPromise;
+    const [rows] = await db.execute(
+      `SELECT * FROM reports_generated 
+       WHERE JSON_EXTRACT(data, '$.testId') = ?
+       ORDER BY created_at DESC`,
+      [testId]
+    );
+
+    const reports = (rows as any[]).map(report => ({
+      id: report.id,
+      data: JSON.parse(report.data),
+      version: report.version,
+      createdAt: report.created_at || report.createdAt,
+    }));
+
+    return {
+      success: true,
+      message: "Reports retrieved successfully",
+      data: reports,
+    };
+  } catch (error) {
+    console.error("Error retrieving reports by testId:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve reports",
+      error,
+    };
+  }
+};
+
+export const deleteReport = async (id: number) => {
+  try {
+    const db = await dbPromise;
+    const [result] = await db.execute(
+      `DELETE FROM reports_generated WHERE id = ?`,
+      [id]
+    );
+
+    const affectedRows = (result as any).affectedRows;
+    if (affectedRows === 0) {
+      return {
+        success: false,
+        message: "Report not found",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Report deleted successfully",
+      affectedRows,
+    };
+  } catch (error) {
+    console.error("Error deleting report:", error);
+    return {
+      success: false,
+      message: "Failed to delete report",
+      error,
+    };
+  }
+};

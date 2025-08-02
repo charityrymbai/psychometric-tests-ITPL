@@ -1,11 +1,12 @@
+import { Request, Response } from 'express';
 import * as groupsService from '../services/groupsService.js';
 
-export const getGroups = async (req, res) => {
+export const getGroups = async (req: Request, res: Response) => {
   const groups = await groupsService.getAllGroups();
   res.json(groups);
 };
 
-export const createGroup = async (req, res) => {
+export const createGroup = async (req: Request, res: Response) => {
   const body = req.body; 
 
   const response = await groupsService.createGroupInDB(body.name, body.description, body.startingClass, body.endingClass);
@@ -23,8 +24,8 @@ export const createGroup = async (req, res) => {
   }
 };
 
-export const updateGroup = (req, res) => {
-  const id = req.params.id;
+export const updateGroup = (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
   const groupData = req.body;
 
   groupsService.updateGroup(id, groupData)
@@ -46,8 +47,8 @@ export const updateGroup = (req, res) => {
     });
 };
 
-export const deleteGroup = (req, res) => {
-  const id = req.params.id;
+export const deleteGroup = (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
 
   groupsService.deleteGroup(id)
     .then(response => {

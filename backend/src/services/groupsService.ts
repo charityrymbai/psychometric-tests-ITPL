@@ -2,9 +2,18 @@ import dbPromise from '../config/db.js';
 
 export const getAllGroups = async () => {
   const db = await dbPromise;
-  const [rows] = await db.execute(`SELECT * FROM \`groups\``);
+  const [rows] = await db.execute(`
+    SELECT 
+      g.*, 
+      COUNT(DISTINCT s.id) AS sectionCount
+    FROM \`groups\` g
+    LEFT JOIN \`section_settings\` s ON g.id = s.group_id
+    GROUP BY g.id
+  `);
   return rows as any[];
 };
+
+
 
 
 export const createGroupInDB = async (

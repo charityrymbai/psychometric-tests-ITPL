@@ -15,7 +15,11 @@ export function SettingsSidebar() {
           <h2 className="text-lg font-bold text-gray-900">Groups</h2>
           <Button variant="ghost" size="sm" onClick={() => setView("main")}>Back</Button>
         </div>
-        <TreeSidebar />
+        <TreeSidebar
+          data={[]}
+          selectedItem={{ type: "home", id: "home" }}
+          onItemSelect={() => {}}
+        />
       </div>
     )
   }
