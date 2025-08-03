@@ -349,9 +349,9 @@ function GenerateQuestionsContent() {
               };
             });
             
-            // Handle generated tags
-            if (result.result.generated_tags) {
-              const newTags: GeneratedTag[] = result.result.generated_tags.map((tag: any) => ({
+            // Handle suggested tags
+            if (result.result.suggested_tags) {
+              const newTags: GeneratedTag[] = result.result.suggested_tags.map((tag: any) => ({
                 temp_id: generateTempTagId(),
                 name: tag.name,
                 description: tag.description,
