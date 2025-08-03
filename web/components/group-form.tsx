@@ -7,8 +7,8 @@ export interface Group {
   id?: string;
   name: string;
   description?: string;
-  fromClass?: string;
-  toClass?: string;
+  startingClass?: number;
+  endingClass?: number;
 }
 
 interface GroupFormProps {
@@ -21,26 +21,32 @@ interface GroupFormProps {
 export function GroupForm({ open, onClose, onSubmit, initialData }: GroupFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [fromClass, setFromClass] = useState("");
-  const [toClass, setToClass] = useState("");
+  const [startingClass, setStartingClass] = useState<number | undefined>(undefined);
+  const [endingClass, setEndingClass] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || "");
       setDescription(initialData.description || "");
-      setFromClass(initialData.fromClass || "");
-      setToClass(initialData.toClass || "");
+      setStartingClass(initialData.startingClass);
+      setEndingClass(initialData.endingClass);
     } else {
       setName("");
       setDescription("");
-      setFromClass("");
-      setToClass("");
+      setStartingClass(undefined);
+      setEndingClass(undefined);
     }
   }, [initialData, open]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSubmit({ ...initialData, name, description, fromClass, toClass });
+    onSubmit({ 
+      ...initialData, 
+      name, 
+      description, 
+      startingClass: startingClass !== undefined ? startingClass : undefined, 
+      endingClass: endingClass !== undefined ? endingClass : undefined 
+    });
     onClose();
   }
 
@@ -73,20 +79,22 @@ export function GroupForm({ open, onClose, onSubmit, initialData }: GroupFormPro
         </div>
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium mb-1">From Class</label>
+            <label className="block text-sm font-medium mb-1">Starting Class</label>
             <Input
+              type="number"
               placeholder="e.g. 1"
-              value={fromClass}
-              onChange={e => setFromClass(e.target.value)}
+              value={startingClass !== undefined ? startingClass : ''}
+              onChange={e => setStartingClass(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               required
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium mb-1">To Class</label>
+            <label className="block text-sm font-medium mb-1">Ending Class</label>
             <Input
+              type="number"
               placeholder="e.g. 5"
-              value={toClass}
-              onChange={e => setToClass(e.target.value)}
+              value={endingClass !== undefined ? endingClass : ''}
+              onChange={e => setEndingClass(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               required
             />
           </div>

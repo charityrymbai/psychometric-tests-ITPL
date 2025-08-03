@@ -243,7 +243,32 @@ async function handleSubmitSection(section: any) {
   }
 
   function handleSubmitGroup(group: any) {
-    // TODO: handle group submission (e.g., API call)
+    // Send the group data to the server
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+
+    const requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: JSON.stringify(group),
+      redirect: "follow" as RequestRedirect
+    };
+
+    fetch("http://localhost:3002/groups/create", requestOptions)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((result) => {
+        console.log("Group created successfully:", result);
+        // Optionally refresh the groups list here
+      })
+      .catch((error) => {
+        console.error("Error creating group:", error);
+      });
+
     setShowGroupForm(false);
     setEditGroupData(null);
   }
