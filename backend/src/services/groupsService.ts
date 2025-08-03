@@ -77,7 +77,35 @@ export const updateGroup = async (id: number, groupData: any) => {
 export const deleteGroup = async (id: number) => {
   try {
     const db = await dbPromise;
-
+    
+    // 1. First, get all sections belonging to this group
+    const [sections] = await db.execute(
+      `SELECT id FROM section_settings WHERE group_id = ?`,
+      [id]
+    );
+    
+    // 2. For each section, delete associated data
+    for (const section of sections as any[]) {
+      // Delete tags for this section
+      await db.execute(
+        `DELETE FROM tags WHERE section_id = ?`,
+        [section.id]
+      );
+      
+      // Delete questions for this section
+      await db.execute(
+        `DELETE FROM questions WHERE section_id = ?`,
+        [section.id]
+      );
+    }
+    
+    // 3. Delete all sections belonging to this group
+    await db.execute(
+      `DELETE FROM section_settings WHERE group_id = ?`,
+      [id]
+    );
+    
+    // 4. Finally, delete the group itself
     const [result] = await db.execute(
       `DELETE FROM \`groups\` WHERE id = ?`,
       [id]
@@ -85,7 +113,7 @@ export const deleteGroup = async (id: number) => {
 
     return {
       success: true,
-      message: "Group deleted successfully",
+      message: "Group and all associated data deleted successfully",
       affectedRows: (result as any).affectedRows,
     };
   } catch (error) {

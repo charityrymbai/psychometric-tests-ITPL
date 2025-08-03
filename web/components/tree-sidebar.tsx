@@ -5,6 +5,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MoreVertical, Plus, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Section {
   id: string;
@@ -30,6 +38,7 @@ interface TreeSidebarProps {
   onCreateQuestion?: (section: Section) => void;
   onDeleteGroup?: (groupId: string) => void;
   onDeleteSection?: (sectionId: string) => void;
+  refreshData?: () => void;
 }
 
 export function TreeSidebar({
@@ -43,15 +52,40 @@ export function TreeSidebar({
   onCreateQuestion,
   onDeleteGroup,
   onDeleteSection,
+  refreshData,
 }: TreeSidebarProps) {
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  
+  // Function to force a refresh by directly calling the API and updating UI
+  const forceRefresh = () => {
+    console.log("TreeSidebar: Forcing direct API refresh");
+    
+    // Call parent's refresh function to update parent state
+    if (refreshData) {
+      console.log("TreeSidebar: Calling parent refreshData function");
+      refreshData();
+    }
+  };
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
     type: "group" | "section" | null;
     data: any;
   }>({ x: 0, y: 0, type: null, data: null });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    type: "group" | "section" | null;
+    data: any;
+    title: string;
+    description: string;
+  }>({
+    isOpen: false,
+    type: null,
+    data: null,
+    title: "",
+    description: ""
+  });
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups((prev) =>
@@ -73,21 +107,103 @@ export function TreeSidebar({
     setMenu({ x: 0, y: 0, type: null, data: null });
     if (action === "edit" && onEditGroup) onEditGroup(group);
     else if (action === "delete") {
-      // TODO: Implement group delete logic here (API call or state update)
-      if (onDeleteGroup) onDeleteGroup(group.id);
+      setConfirmDialog({
+        isOpen: true,
+        type: "group",
+        data: group,
+        title: "Delete Group",
+        description: `Are you sure you want to delete "${group.name}"? This will also delete all sections and questions within this group. This action cannot be undone.`
+      });
     }
-    else if (action === "add-section" && onAddSection) onAddSection(group.id);
+    else if (action === "add-section" && onAddSection) {
+      onAddSection(group.id);
+      // Add a small delay to ensure the backend has processed the addition
+      setTimeout(() => {
+        console.log("TreeSidebar: Refreshing data after section addition");
+        forceRefresh();
+      }, 300);
+    }
     else if (action === "add-test") alert(`Add test to group: ${group.name}`);
+  };
+  
+    const deleteGroup = (group: Group) => {
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    
+    const requestOptions = {
+      method: "DELETE",
+      headers: myHeaders
+    };
+    
+    fetch(`http://localhost:3002/groups/delete/${group.id}`, requestOptions)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((result) => {
+        console.log("Group deleted:", result);
+        if (onDeleteGroup) onDeleteGroup(group.id);
+        
+        // Refresh data immediately after deletion
+        console.log("Refreshing data after group deletion");
+        forceRefresh();
+      })
+      .catch((error) => {
+        console.error("Error deleting group:", error);
+        alert(`Failed to delete group: ${error.message}`);
+      });
   };
 
   const handleSectionMenu = (action: string, section: Section) => {
     setMenu({ x: 0, y: 0, type: null, data: null });
     if (action === "edit" && onEditSection) onEditSection(section);
     else if (action === "delete") {
-      // TODO: Implement section delete logic here (API call or state update)
-      if (onDeleteSection) onDeleteSection(section.id);
+      setConfirmDialog({
+        isOpen: true,
+        type: "section",
+        data: section,
+        title: "Delete Section",
+        description: `Are you sure you want to delete "${section.name}"? This will also delete all questions within this section. This action cannot be undone.`
+      });
     }
-    else if (action === "add-question" && onCreateQuestion) onCreateQuestion(section);
+    else if (action === "add-question" && onCreateQuestion) {
+      onCreateQuestion(section);
+      // Refresh data immediately after adding a question
+      console.log("Refreshing data after question addition request");
+      forceRefresh();
+    }
+  };
+  
+  const deleteSection = (section: Section) => {
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    
+    const requestOptions = {
+      method: "DELETE",
+      headers: myHeaders
+    };
+    
+    fetch(`http://localhost:3002/sections/delete/${section.id}`, requestOptions)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((result) => {
+        console.log("Section deleted:", result);
+        if (onDeleteSection) onDeleteSection(section.id);
+        
+        // Refresh data immediately after deletion
+        console.log("Refreshing data after section deletion");
+        forceRefresh();
+      })
+      .catch((error) => {
+        console.error("Error deleting section:", error);
+        alert(`Failed to delete section: ${error.message}`);
+      });
   };
 
   return (
@@ -95,7 +211,17 @@ export function TreeSidebar({
       <div className="flex items-center justify-between px-4 py-2 border-b">
         <h2 className="text-lg font-semibold">Settings</h2>
         {onAddGroup && (
-          <Button size="sm" variant="outline" onClick={onAddGroup}>
+          <Button size="sm" variant="outline" onClick={async () => {
+            console.log("TreeSidebar: Add Group button clicked");
+            onAddGroup();
+            
+            // Wait a moment for the add operation to complete
+            setTimeout(() => {
+              // Refresh data immediately after adding a group
+              console.log("TreeSidebar: Refreshing data after group addition");
+              forceRefresh();
+            }, 300); // Small delay to allow the backend to process
+          }}>
             <Plus className="w-4 h-4 mr-1" />
             Add Group
           </Button>
@@ -224,6 +350,39 @@ export function TreeSidebar({
           )}
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialog.isOpen} onOpenChange={(open) => {
+        if (!open) setConfirmDialog({...confirmDialog, isOpen: false});
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogDescription>{confirmDialog.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setConfirmDialog({...confirmDialog, isOpen: false})}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                if (confirmDialog.type === "group") {
+                  deleteGroup(confirmDialog.data);
+                } else if (confirmDialog.type === "section") {
+                  deleteSection(confirmDialog.data);
+                }
+                setConfirmDialog({...confirmDialog, isOpen: false});
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

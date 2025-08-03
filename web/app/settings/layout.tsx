@@ -37,21 +37,29 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   // Fetch groups and sections from API
   const [groups, setGroups] = useState<any[]>([]);
   const fetchGroups = async () => {
-    const res = await fetch(`${BACKEND_BASE_URL}/all`);
-    const data = await res.json();
-    console.log(sectionDetailsData, "Fetched groups:", data);
-    const formatted = (data || []).map((group: any) => ({
-      id: String(group.id),
-      name: group.name,
-      sections: (group.sections || []).map((section: any) => ({
-        id: String(section.id),
-        name: section.name,
-        description: section.description || "",
-        questions: section.questions || 0,
+    console.log("Layout: fetchGroups called");
+    try {
+      const res = await fetch(`${BACKEND_BASE_URL}/all`);
+      if (!res.ok) {
+        throw new Error(`Server responded with status: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log("Layout: Successfully fetched groups:", data);
+      const formatted = (data || []).map((group: any) => ({
+        id: String(group.id),
+        name: group.name,
+        sections: (group.sections || []).map((section: any) => ({
+          id: String(section.id),
+          name: section.name,
+          description: section.description || "",
+          questions: section.questions || 0,
         groupId: String(group.id)
       }))
     }));
     setGroups(formatted);
+    } catch (error) {
+      console.error("Layout: Error fetching groups:", error);
+    }
   };
   useEffect(() => {
     fetchGroups();
@@ -106,9 +114,14 @@ async function addSection(section: any, groupId: string) {
     headers: myHeaders,
     body: raw
   };
+  console.log("Layout: Adding section to group", groupId, payload);
   const res = await fetch(`${BACKEND_BASE_URL}/sections/create/${groupId}`, requestOptions);
   if (!res.ok) throw new Error('Failed to add section');
-  return await res.json();
+  const result = await res.json();
+  console.log("Layout: Section added successfully", result);
+  // Refresh the groups data immediately
+  await fetchGroups();
+  return result;
 }
 
 async function handleSubmitSection(section: any) {
@@ -247,26 +260,37 @@ async function handleSubmitSection(section: any) {
     const myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
 
+    const raw = JSON.stringify({
+      name: group.name,
+      description: group.description || "",
+      startingClass: group.startingClass || 0,
+      endingClass: group.endingClass || 0
+    });
+
     const requestOptions = {
       method: "POST",
       headers: myHeaders,
-      body: JSON.stringify(group),
+      body: raw,
       redirect: "follow" as RequestRedirect
     };
 
+    console.log("Layout: Creating group with data:", raw);
+    
     fetch("http://localhost:3002/groups/create", requestOptions)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        return response.json();
+        return response.text();
       })
       .then((result) => {
         console.log("Group created successfully:", result);
-        // Optionally refresh the groups list here
+        // Refresh the groups list immediately
+        fetchGroups();
       })
       .catch((error) => {
         console.error("Error creating group:", error);
+        alert(`Failed to create group: ${error.message}`);
       });
 
     setShowGroupForm(false);
@@ -295,6 +319,7 @@ async function handleSubmitSection(section: any) {
           onAddSection={handleAddSection}
           onEditSection={handleEditSection}
           onCreateQuestion={handleCreateQuestion}
+          refreshData={fetchGroups}
         />
       </aside>
       {showGroupForm && (

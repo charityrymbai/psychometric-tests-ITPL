@@ -137,8 +137,34 @@ function GenerateQuestionsContent() {
     
     try {
       if (editingTag.id) {
-        // Editing existing tag - would need backend API
-        // TODO: Implement backend call to update existing tag
+        // Editing existing tag
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/tags/${editingTag.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: editingTag.name,
+            description: editingTag.description,
+            section_id: sectionData?.sectionId
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to update tag: ${response.statusText}`);
+        }
+        
+        // Update local state with edited tag
+        if (sectionData) {
+          setSectionData({
+            ...sectionData,
+            tags: sectionData.tags.map(tag => 
+              tag.id === editingTag.id 
+                ? { ...tag, name: editingTag.name, description: editingTag.description }
+                : tag
+            )
+          });
+        }
       } else if (editingTag.temp_id) {
         // Editing generated tag
         setGeneratedTags(prev => prev.map(tag => 

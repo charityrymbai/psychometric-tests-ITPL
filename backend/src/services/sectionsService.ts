@@ -37,11 +37,34 @@ export const updateSection = async (groupId, sectionId, sectionData) => {
   return { id: sectionId, ...sectionData };
 };
 
-export const deleteSection = async (groupId, sectionId) => {
+export const deleteSection = async (sectionId) => {
   const db = await dbPromise;
-  const [result] = await db.execute("DELETE FROM section_settings WHERE id = ? AND group_id = ?", [sectionId, groupId]);
-  if (result.affectedRows === 0) {
-    throw new Error("Section not found");
+  
+  try {
+    // 1. Delete associated tags first
+    await db.execute("DELETE FROM tags WHERE section_id = ?", [sectionId]);
+    console.log(`Deleted tags for section ${sectionId}`);
+    
+    // 2. Delete questions associated with this section
+    await db.execute("DELETE FROM questions WHERE section_id = ?", [sectionId]);
+    console.log(`Deleted questions for section ${sectionId}`);
+    
+    // 3. Delete the section itself
+    const [result] = await db.execute("DELETE FROM section_settings WHERE id = ?", [sectionId]);
+    
+    // Check if any rows were affected
+    if ((result as any).affectedRows === 0) {
+      throw new Error("Section not found");
+    }
+    
+    return { 
+      success: true, 
+      message: "Section and all associated data deleted successfully",
+      affectedRows: (result as any).affectedRows
+    };
+  } catch (error) {
+    console.error("Error deleting section:", error);
+    throw error;
   }
 };
 

@@ -71,11 +71,15 @@ export const updateSection = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteSection = (req: Request, res: Response) => {
-  const { groupId, sectionId } = req.params;
-  sectionsService.deleteSection(groupId, sectionId)
-    .then(() => res.status(200).json({ message: 'Section deleted successfully' }))
-    .catch(err => res.status(500).json({ error: err.message }));
+export const deleteSection = async (req: Request, res: Response) => {
+  const { sectionId } = req.params;
+  
+  try {
+    await sectionsService.deleteSection(sectionId);
+    res.status(200).json({ message: 'Section deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+  }
 };
 
 export const getSectionByGroupId = async (req: Request, res: Response) => {
