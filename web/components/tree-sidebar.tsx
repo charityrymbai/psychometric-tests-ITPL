@@ -135,7 +135,7 @@ export function TreeSidebar({
       headers: myHeaders
     };
     
-    fetch(`http://localhost:3002/groups/delete/${group.id}`, requestOptions)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/groups/delete/${group.id}`, requestOptions)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);
@@ -185,7 +185,7 @@ export function TreeSidebar({
       headers: myHeaders
     };
     
-    fetch(`http://localhost:3002/sections/delete/${section.id}`, requestOptions)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/sections/delete/${section.id}`, requestOptions)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Server responded with status: ${response.status}`);

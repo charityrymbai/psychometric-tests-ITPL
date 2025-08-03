@@ -275,8 +275,8 @@ async function handleSubmitSection(section: any) {
     };
 
     console.log("Layout: Creating group with data:", raw);
-    
-    fetch("http://localhost:3002/groups/create", requestOptions)
+
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/groups/create`, requestOptions)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);

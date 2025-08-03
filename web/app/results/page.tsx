@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002'
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3002'
 
 // Types
 interface TestResult {
