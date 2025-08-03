@@ -327,15 +327,34 @@ function GenerateQuestionsContent() {
               tempIdMapping[10000 + index] = tag.temp_id;
             });
 
+            // Handle suggested tags first to create mapping
+            const suggestedTagsMapping: Record<number, string> = {};
+            
+            if (result.result.suggested_tags) {
+              const newTags: GeneratedTag[] = result.result.suggested_tags.map((tag: any, index: number) => {
+                const tempId = generateTempTagId();
+                // Map the tag's ID (10001+) to the temporary ID for frontend use
+                suggestedTagsMapping[10001 + index] = tempId;
+                return {
+                  temp_id: tempId,
+                  name: tag.name,
+                  description: tag.description,
+                  isNew: true
+                };
+              });
+              setGeneratedTags(prev => [...prev, ...newTags]);
+            }
+            
+            // Process questions with the mappings from both existing and suggested tags
             const newQuestions = result.result.questions.map((q: any, index: number) => {
               // Process options to map temporary tag IDs back to temp_ids
               const processedOptions = q.options?.map((opt: any) => {
                 if (opt.tag_id && opt.tag_id >= 10000) {
-                  // This is a generated tag, map back to temp_id
+                  // This is a suggested tag from the AI response
                   return {
                     ...opt,
                     tag_id: null,
-                    temp_tag_id: tempIdMapping[opt.tag_id]
+                    temp_tag_id: suggestedTagsMapping[opt.tag_id] || tempIdMapping[opt.tag_id]
                   };
                 }
                 // Keep existing database tag IDs as-is
@@ -348,17 +367,6 @@ function GenerateQuestionsContent() {
                 options: processedOptions
               };
             });
-            
-            // Handle suggested tags
-            if (result.result.suggested_tags) {
-              const newTags: GeneratedTag[] = result.result.suggested_tags.map((tag: any) => ({
-                temp_id: generateTempTagId(),
-                name: tag.name,
-                description: tag.description,
-                isNew: true
-              }));
-              setGeneratedTags(prev => [...prev, ...newTags]);
-            }
             
             setQuestions(prev => [...prev, ...newQuestions]);
             setEditing(prev => ({
@@ -422,7 +430,13 @@ function GenerateQuestionsContent() {
         is_single_option_correct: sectionData.isSingleOptionCorrect,
         tags: allTags,
         existing_questions: sectionData.questions, // Use existing questions from sectionData for AI context
-        generation_params: cleanedParams,
+        generation_params: {
+          ...cleanedParams,
+          // Always ensure tag balance for tag-based sections
+          ensure_tag_balance: !sectionData.isSingleOptionCorrect,
+          // For tag-based sections, use tag-balanced questions even with suggested tags
+          use_suggested_tags: !sectionData.isSingleOptionCorrect && allTags.length === 0
+        },
         // For tag-based generation, request tag suggestions
         request_tag_suggestions: !sectionData.isSingleOptionCorrect
       };
@@ -521,6 +535,50 @@ function GenerateQuestionsContent() {
     setQuestions(qs =>
       qs.map(q => (q.id === qid ? { ...q, correct_option: idx } : q))
     );
+  };
+
+  // Add a utility function to auto-assign suggested tags to untagged options
+  const handleAutoAssignTags = () => {
+    if (generatedTags.length === 0) {
+      alert("No suggested tags available to assign.");
+      return;
+    }
+
+    // Map questions with their options
+    setQuestions(prevQuestions => {
+      return prevQuestions.map(question => {
+        // Check if this question has untagged options
+        const hasUntaggedOptions = question.options.some(opt => 
+          (!opt.tag_id && !opt.temp_tag_id) || (opt.tag_id === null && !opt.temp_tag_id)
+        );
+
+        if (!hasUntaggedOptions) {
+          return question; // Skip if all options already have tags
+        }
+
+        // Map through options and assign tags to untagged ones
+        const updatedOptions = question.options.map((opt, index) => {
+          if ((!opt.tag_id && !opt.temp_tag_id) || (opt.tag_id === null && !opt.temp_tag_id)) {
+            // Choose a tag for this option (cycling through available tags)
+            const tagIndex = index % generatedTags.length;
+            const tag = generatedTags[tagIndex];
+            
+            return {
+              ...opt,
+              temp_tag_id: tag.temp_id
+            };
+          }
+          return opt;
+        });
+
+        return {
+          ...question,
+          options: updatedOptions
+        };
+      });
+    });
+
+    alert("Successfully assigned tags to untagged options!");
   };
 
   // Save questions to backend
@@ -916,7 +974,22 @@ function GenerateQuestionsContent() {
       {/* Questions List */}
       {questions.length > 0 ? (
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold">Newly Generated Questions ({questions.length})</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Newly Generated Questions ({questions.length})</h2>
+            
+            {/* Auto-assign tags button - only show for tag-based sections with suggested tags */}
+            {!sectionData?.isSingleOptionCorrect && generatedTags.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleAutoAssignTags}
+                className="flex items-center gap-2"
+              >
+                <Tags className="w-4 h-4" />
+                Auto-Assign Tags
+              </Button>
+            )}
+          </div>
           
           {questions.map((q) => (
             <Card key={q.id} className="relative">
