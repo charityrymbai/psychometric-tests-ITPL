@@ -8,36 +8,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Trash, Check, Pencil, Loader2, Sparkles, RefreshCw, Edit, Plus, Tags } from 'lucide-react';
+import { Trash, Check, Pencil, Loader2, Sparkles, RefreshCw, Edit, Plus, Tags, Wand2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  mapOptionsToTags, 
+  generateTempTagId, 
+  createGeneratedTagsFromSuggestions,
+  type Tag,
+  type GeneratedTag,
+  type QuestionOption
+} from './tag-utils';
 
 // Types for question structure
-type QuestionOption = {
-  text: string;
-  tag_id?: number | null;
-  temp_tag_id?: string; // For newly generated tags without backend IDs
-};
-
 type Question = {
   id: number;
   text: string;
   options: QuestionOption[];
   correct_option?: number | null;
   type: string;
-};
-
-type Tag = {
-  id: number;
-  name: string;
-  description?: string;
-};
-
-type GeneratedTag = {
-  temp_id: string;
-  name: string;
-  description?: string;
-  isNew: boolean;
 };
 
 type SectionData = {
@@ -70,10 +59,10 @@ function GenerateQuestionsContent() {
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editing, setEditing] = useState<Record<number, boolean>>({});
+  const [saving, setSaving] = useState<boolean>(false);
   
   // Generated tags management
   const [generatedTags, setGeneratedTags] = useState<GeneratedTag[]>([]);
-  const [tagCounter, setTagCounter] = useState<number>(0);
   
   // Tag editing and adding state
   const [editingTag, setEditingTag] = useState<{id?: number, temp_id?: string, name: string, description: string} | null>(null);
@@ -88,7 +77,7 @@ function GenerateQuestionsContent() {
   
   // Generation parameters
   const [generationParams, setGenerationParams] = useState<GenerationParams>({
-    num_questions: 10,
+    num_questions: 5,
     question_style: 'multiple_choice',
     question_types: ['mcq'],
     additional_requirements: '',
@@ -96,20 +85,24 @@ function GenerateQuestionsContent() {
   });
 
   // Helper functions for tag management
-  const generateTempTagId = () => {
-    const newId = `temp_${tagCounter}`;
-    setTagCounter(prev => prev + 1);
-    return newId;
-  };
-
   const getAllAvailableTags = () => {
+    // Format existing DB tags
     const existingTags = sectionData?.tags?.map(tag => ({
       ...tag,
       temp_id: `existing_${tag.id}`,
       isNew: false
     })) || [];
     
-    return [...existingTags, ...generatedTags];
+    // Make sure generatedTags are properly formatted
+    const processedGeneratedTags = generatedTags.map(tag => ({
+      ...tag,
+      temp_id: tag.temp_id || generateTempTagId(),
+      isNew: true
+    }));
+    
+    const allTags = [...existingTags, ...processedGeneratedTags];
+    console.log("All available tags:", allTags.map(t => t.name));
+    return allTags;
   };
 
   const handleDeleteGeneratedTag = (tempId: string) => {
@@ -321,46 +314,38 @@ function GenerateQuestionsContent() {
           setGenerationProgress('Generation completed!');
           
           if (result.result && result.result.questions) {
-            // Create mapping from temporary numeric IDs back to temp_ids for generated tags
-            const tempIdMapping: Record<number, string> = {};
-            generatedTags.forEach((tag, index) => {
-              tempIdMapping[10000 + index] = tag.temp_id;
-            });
-
-            // Handle suggested tags first to create mapping
-            const suggestedTagsMapping: Record<number, string> = {};
+            // Process any suggested tags first
+            let newSuggestedTags: GeneratedTag[] = [];
             
-            if (result.result.suggested_tags) {
-              const newTags: GeneratedTag[] = result.result.suggested_tags.map((tag: any, index: number) => {
-                const tempId = generateTempTagId();
-                // Map the tag's ID (10001+) to the temporary ID for frontend use
-                suggestedTagsMapping[10001 + index] = tempId;
-                return {
-                  temp_id: tempId,
-                  name: tag.name,
-                  description: tag.description,
-                  isNew: true
-                };
-              });
-              setGeneratedTags(prev => [...prev, ...newTags]);
+            if (result.result.suggested_tags && result.result.suggested_tags.length > 0) {
+              console.log("API returned suggested tags:", result.result.suggested_tags);
+              
+              // Use our utility to create suggested tags
+              const existingTagsCount = (sectionData?.tags?.length || 0) + generatedTags.length;
+              newSuggestedTags = createGeneratedTagsFromSuggestions(
+                result.result.suggested_tags,
+                existingTagsCount
+              );
+              
+              console.log("Created suggested tags:", newSuggestedTags);
             }
             
-            // Process questions with the mappings from both existing and suggested tags
+            // Process the questions
             const newQuestions = result.result.questions.map((q: any, index: number) => {
-              // Process options to map temporary tag IDs back to temp_ids
-              const processedOptions = q.options?.map((opt: any) => {
-                if (opt.tag_id && opt.tag_id >= 10000) {
-                  // This is a suggested tag from the AI response
-                  return {
-                    ...opt,
-                    tag_id: null,
-                    temp_tag_id: suggestedTagsMapping[opt.tag_id] || tempIdMapping[opt.tag_id]
-                  };
-                }
-                // Keep existing database tag IDs as-is
-                return opt;
-              }) || [];
-
+              console.log(`Processing question ${index + 1}: "${q.text.substring(0, 30)}..."`);
+              
+              // Map options with their tags
+              const existingTags = sectionData?.tags || [];
+              const allSuggestedTags = [...generatedTags, ...newSuggestedTags];
+              
+              // Process options using our utility function
+              const processedOptions = mapOptionsToTags(
+                q.options, 
+                existingTags, 
+                allSuggestedTags,
+                !sectionData?.isSingleOptionCorrect // Only auto-assign for tag-based sections
+              );
+              
               return {
                 ...q,
                 id: Date.now() + index, // Temporary ID for new questions
@@ -373,6 +358,46 @@ function GenerateQuestionsContent() {
               ...prev,
               ...newQuestions.reduce((acc: any, q: Question) => ({ ...acc, [q.id]: true }), {})
             }));
+            
+            // Now that questions are processed, update the generatedTags state if we have new tags
+            if (newSuggestedTags.length > 0) {
+              console.log(`Setting ${newSuggestedTags.length} new suggested tags`);
+              
+              // Use callback form to ensure we're working with the latest state
+              setGeneratedTags(prev => {
+                // First, make sure we don't add duplicates by creating a map of existing tag names
+                const existingTagNamesMap = new Map(
+                  prev.map(t => [t.name.toLowerCase(), t])
+                );
+                
+                // Filter out tags that already exist
+                const uniqueNewTags = newSuggestedTags.filter(
+                  tag => !existingTagNamesMap.has(tag.name.toLowerCase())
+                );
+                
+                console.log(`Adding ${uniqueNewTags.length} unique new tags:`, 
+                           uniqueNewTags.map(t => t.name));
+                
+                return [...prev, ...uniqueNewTags];
+              });
+              
+              // After adding new tags, auto-assign tags with a sufficient delay to ensure state updates
+              setTimeout(() => {
+                console.log("Auto-assigning tags after generation completed");
+                handleAutoAssignTags();
+              }, 1000);
+            }
+            
+            // Provide a message about auto-assigning tags if needed
+            const untaggedOptions = newQuestions.some((q: Question) => 
+              q.options.some((opt: QuestionOption) => !opt.tag_id && !opt.temp_tag_id)
+            );
+            
+            if (untaggedOptions) {
+              setGenerationProgress('Questions generated! Some options need tag assignment.');
+            } else {
+              setGenerationProgress('Questions generated successfully!');
+            }
           }
         } else if (result.status === 'FAILED' || result.status === 'failed') {
           setGenerating(false);
@@ -421,6 +446,9 @@ function GenerateQuestionsContent() {
         }))
       ];
 
+      // Determine if we need to request new tag suggestions
+      const shouldRequestTagSuggestions = !sectionData.isSingleOptionCorrect && allTags.length < 4;
+
       const requestBody = {
         section_id: sectionData.sectionId,
         section_name: sectionData.sectionName,
@@ -434,11 +462,9 @@ function GenerateQuestionsContent() {
           ...cleanedParams,
           // Always ensure tag balance for tag-based sections
           ensure_tag_balance: !sectionData.isSingleOptionCorrect,
-          // For tag-based sections, use tag-balanced questions even with suggested tags
-          use_suggested_tags: !sectionData.isSingleOptionCorrect && allTags.length === 0
         },
-        // For tag-based generation, request tag suggestions
-        request_tag_suggestions: !sectionData.isSingleOptionCorrect
+        // Only request tag suggestions if we have fewer than 4 tags
+        request_tag_suggestions: shouldRequestTagSuggestions
       };
 
       console.log('Sending generation request:', requestBody);
@@ -515,12 +541,37 @@ function GenerateQuestionsContent() {
               options: q.options.map((opt, i) => {
                 if (i === idx) {
                   if (tagValue === '' || tagValue === '__no_tag__') {
-                    return { ...opt, tag_id: null, temp_tag_id: undefined };
+                    // Clear tag assignment
+                    return { 
+                      ...opt, 
+                      tag_id: null, 
+                      temp_tag_id: undefined,
+                      tag_name_display: undefined,
+                      is_suggested_tag: false
+                    };
                   } else if (tagValue.startsWith('existing_')) {
+                    // This is an existing tag from the database
                     const tagId = parseInt(tagValue.replace('existing_', ''));
-                    return { ...opt, tag_id: tagId, temp_tag_id: undefined };
+                    const tagName = sectionData?.tags?.find(t => t.id === tagId)?.name;
+                    
+                    return { 
+                      ...opt, 
+                      tag_id: tagId, 
+                      temp_tag_id: undefined,
+                      tag_name_display: tagName,
+                      is_suggested_tag: false
+                    };
                   } else {
-                    return { ...opt, tag_id: null, temp_tag_id: tagValue };
+                    // This is a temporary tag
+                    const tagName = generatedTags.find(t => t.temp_id === tagValue)?.name;
+                    
+                    return { 
+                      ...opt, 
+                      tag_id: null, 
+                      temp_tag_id: tagValue,
+                      tag_name_display: tagName,
+                      is_suggested_tag: true
+                    };
                   }
                 }
                 return opt;
@@ -539,46 +590,46 @@ function GenerateQuestionsContent() {
 
   // Add a utility function to auto-assign suggested tags to untagged options
   const handleAutoAssignTags = () => {
-    if (generatedTags.length === 0) {
-      alert("No suggested tags available to assign.");
-      return;
-    }
+    console.log("Auto-assigning tags to options...");
+    const allAvailableTags = getAllAvailableTags();
 
-    // Map questions with their options
+
+    console.log("Available tags for auto-assign:", allAvailableTags.map(t => ({
+      name: t.name, 
+      id: 'id' in t ? t.id : null,
+      temp_id: 'temp_id' in t ? t.temp_id : null
+    })));
+
+    // Update questions using our utility function
     setQuestions(prevQuestions => {
       return prevQuestions.map(question => {
-        // Check if this question has untagged options
-        const hasUntaggedOptions = question.options.some(opt => 
-          (!opt.tag_id && !opt.temp_tag_id) || (opt.tag_id === null && !opt.temp_tag_id)
+        // Check if this question has untagged options or options with tag_name_display
+        const needsTaggingOptions = question.options.some(opt => 
+          (!opt.tag_id && !opt.temp_tag_id) || 
+          opt.tag_name_display || 
+          opt.is_suggested_tag
         );
 
-        if (!hasUntaggedOptions) {
-          return question; // Skip if all options already have tags
+        if (!needsTaggingOptions) {
+          return question; // Skip if all options already have proper tags
         }
 
-        // Map through options and assign tags to untagged ones
-        const updatedOptions = question.options.map((opt, index) => {
-          if ((!opt.tag_id && !opt.temp_tag_id) || (opt.tag_id === null && !opt.temp_tag_id)) {
-            // Choose a tag for this option (cycling through available tags)
-            const tagIndex = index % generatedTags.length;
-            const tag = generatedTags[tagIndex];
-            
-            return {
-              ...opt,
-              temp_tag_id: tag.temp_id
-            };
-          }
-          return opt;
-        });
+        console.log("Processing question for auto-assign:", question.text.substring(0, 30) + "...");
+
+        // Use our utility function to map options to tags
+        const processedOptions = mapOptionsToTags(
+          question.options,
+          sectionData?.tags || [],
+          generatedTags,
+          !sectionData?.isSingleOptionCorrect // Only auto-assign for tag-based sections
+        );
 
         return {
           ...question,
-          options: updatedOptions
+          options: processedOptions
         };
       });
     });
-
-    alert("Successfully assigned tags to untagged options!");
   };
 
   // Save questions to backend
@@ -595,6 +646,9 @@ function GenerateQuestionsContent() {
     }
 
     try {
+      setSaving(true);
+      setError(null);
+      
       // First, create new tags in the backend
       const tagMapping: Record<string, number> = {};
       for (const tag of generatedTags) {
@@ -648,6 +702,7 @@ function GenerateQuestionsContent() {
     } catch (err) {
       console.error('Error saving questions:', err);
       setError('Failed to save questions');
+      setSaving(false);
     }
   };
 
@@ -713,7 +768,7 @@ function GenerateQuestionsContent() {
                 value={generationParams.num_questions}
                 onChange={(e) => setGenerationParams(prev => ({
                   ...prev,
-                  num_questions: parseInt(e.target.value) || 10
+                  num_questions: parseInt(e.target.value) || 5
                 }))}
               />
             </div>
@@ -977,8 +1032,8 @@ function GenerateQuestionsContent() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Newly Generated Questions ({questions.length})</h2>
             
-            {/* Auto-assign tags button - only show for tag-based sections with suggested tags */}
-            {!sectionData?.isSingleOptionCorrect && generatedTags.length > 0 && (
+            {/* Auto-assign tags button - only show for tag-based sections with available tags */}
+            {!sectionData?.isSingleOptionCorrect && getAllAvailableTags().length > 0 && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -1040,7 +1095,7 @@ function GenerateQuestionsContent() {
                   <Label className="block font-semibold mb-2">Options:</Label>
                   <div className="space-y-3">
                     {q.options.map((opt, idx) => (
-                      <div key={idx} className="border rounded-lg p-3 bg-gray-50">
+                      <div key={`${q.id}_option_${idx}`} className="border rounded-lg p-3 bg-gray-50">
                         <div className="flex items-center gap-2 mb-2">
                           {sectionData?.isSingleOptionCorrect && (
                             <input
@@ -1087,11 +1142,13 @@ function GenerateQuestionsContent() {
                               </Select>
                             ) : (
                               <span className="text-xs text-gray-600">
-                                {opt.temp_tag_id 
-                                  ? generatedTags.find(t => t.temp_id === opt.temp_tag_id)?.name || 'Unknown'
-                                  : opt.tag_id 
-                                    ? sectionData?.tags?.find(t => t.id === opt.tag_id)?.name || `ID: ${opt.tag_id}`
-                                    : 'No tag'
+                                {opt.tag_name_display
+                                  ? opt.tag_name_display
+                                  : opt.temp_tag_id 
+                                    ? generatedTags.find(t => t.temp_id === opt.temp_tag_id)?.name || 'Unknown'
+                                    : opt.tag_id 
+                                      ? sectionData?.tags?.find(t => t.id === opt.tag_id)?.name || `ID: ${opt.tag_id}`
+                                      : 'No tag'
                                 }
                                 {opt.temp_tag_id && (
                                   <span className="text-blue-600 ml-1">(New)</span>
@@ -1101,15 +1158,17 @@ function GenerateQuestionsContent() {
                           </div>
                         )}
                         
-                        {sectionData?.isSingleOptionCorrect && (opt.tag_id || opt.temp_tag_id) && (
+                        {/* {sectionData?.isSingleOptionCorrect && (opt.tag_id || opt.temp_tag_id) && (
                           <div className="text-xs text-gray-500 mt-1">
-                            Tag: {opt.temp_tag_id 
-                              ? generatedTags.find(t => t.temp_id === opt.temp_tag_id)?.name || 'Unknown'
-                              : sectionData?.tags?.find(t => t.id === opt.tag_id)?.name || opt.tag_id
+                            Tag: {opt.tag_name_display
+                              ? opt.tag_name_display
+                              : opt.temp_tag_id 
+                                ? generatedTags.find(t => t.temp_id === opt.temp_tag_id)?.name || 'Unknown'
+                                : sectionData?.tags?.find(t => t.id === opt.tag_id)?.name || opt.tag_id
                             }
                             {opt.temp_tag_id && <span className="text-blue-600 ml-1">(New)</span>}
                           </div>
-                        )}
+                        )} */}
                       </div>
                     ))}
                   </div>
@@ -1140,15 +1199,23 @@ function GenerateQuestionsContent() {
           onClick={() => {
             window.location.href = `/settings?sectionId=${sectionData?.sectionId}`;
           }}
+          disabled={saving}
         >
           Cancel
         </Button>
         <Button 
-          className="px-8 py-2 text-lg font-semibold"
+          className="px-8 py-2 text-lg font-semibold flex items-center gap-2"
           onClick={handleSave}
-          disabled={questions.length === 0}
+          disabled={questions.length === 0 || saving}
         >
-          Save New Questions ({questions.length})
+          {saving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>Save New Questions ({questions.length})</>
+          )}
         </Button>
       </div>
     </div>

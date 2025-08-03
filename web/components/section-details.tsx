@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from ".
 interface QuestionOption {
   text: string;
   tag_id: number | null;
+  tag_name_display?: string; // For displaying tag name directly from AI
   isCorrect?: boolean;
 }
 
@@ -56,7 +57,7 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
 
   // Add Question modal state
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
-  type OptionType = { text: string; tag_id: number | null };
+  type OptionType = { text: string; tag_id: number | null; tag_name_display?: string; isCorrect?: boolean };
   const emptyOptions: OptionType[] = [
     { text: '', tag_id: null },
     { text: '', tag_id: null },
@@ -158,7 +159,8 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
         // This ensures database consistency and allows for switching section types later
         options = addQuestionState.options.map(opt => ({
           text: opt.text,
-          tag_id: typeof opt.tag_id === 'number' ? opt.tag_id : null // Using null instead of undefined for JSON
+          tag_id: typeof opt.tag_id === 'number' ? opt.tag_id : null, // Using null instead of undefined for JSON
+          tag_name_display: opt.tag_name_display // Preserve the display name if available
         }));
         
         // Only set correct_option to null for multi-tag sections
@@ -195,7 +197,8 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
     // Always include tag_id for all options
     const options = editState.options.map((opt: OptionType) => ({
       text: typeof opt.text === 'string' ? opt.text : String(opt),
-      tag_id: typeof opt.tag_id === 'number' ? opt.tag_id : null
+      tag_id: typeof opt.tag_id === 'number' ? opt.tag_id : null,
+      tag_name_display: opt.tag_name_display // Preserve display name
     }));
     const raw = JSON.stringify({
       text: editState.text,
@@ -266,7 +269,8 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
         if (typeof opt === 'object' && opt !== null) {
           return {
             text: typeof opt.text === 'string' ? opt.text : String(opt),
-            tag_id: typeof opt.tag_id === 'number' ? opt.tag_id : null
+            tag_id: typeof opt.tag_id === 'number' ? opt.tag_id : null,
+            tag_name_display: opt.tag_name_display
           };
         } else {
           return { text: String(opt), tag_id: null };
@@ -413,8 +417,17 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                 {addQuestionState.options.map((opt, i) => {
                   // Find selected tag object for display
                   let selectedTag = null;
-                  if (!sectionDetails.isSingleOptionCorrect && typeof opt.tag_id === 'number') {
-                    selectedTag = sectionDetails.tags.find((tag: any) => tag.id === opt.tag_id);
+                  if (!sectionDetails.isSingleOptionCorrect) {
+                    if (opt.tag_name_display) {
+                      // If we have a tag_name_display, create a temporary tag object for display
+                      selectedTag = {
+                        id: null,
+                        name: opt.tag_name_display,
+                        description: ''
+                      };
+                    } else if (typeof opt.tag_id === 'number') {
+                      selectedTag = sectionDetails.tags.find((tag: any) => tag.id === opt.tag_id);
+                    }
                   }
                   return (
                     <li
@@ -458,7 +471,7 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                                     <div className="flex flex-col">
                                       <span className="font-medium">{tag.label || tag.name}</span>
                                       {/* <span className="text-xs text-gray-400">ID: {tag.id}</span> */}
-                                      {tag.description && <span className="text-xs text-gray-500">{tag.description}</span>}
+                                      {/* {tag.description && <span className="text-xs text-gray-500">{tag.description}</span>} */}
                                     </div>
                                   </SelectItem>
                                 ))}
@@ -472,8 +485,14 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                         <div className={`text-xs rounded px-2 py-1 mt-1 w-fit ${selectedTag ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'}`}>
                           {selectedTag ? (
                             <>
-                              <span className="font-bold">Tag ID: {opt.tag_id}</span> - <span className="font-semibold">{selectedTag.label || selectedTag.name}</span>
-                              {selectedTag.description && <span className="ml-2 text-gray-500">({selectedTag.description})</span>}
+                              {opt.tag_name_display ? (
+                                <span className="font-semibold">{opt.tag_name_display}</span>
+                              ) : (
+                                <>
+                                  <span className="font-semibold">{selectedTag.label || selectedTag.name}</span>
+                                  {selectedTag.description && <span className="ml-2 text-gray-500">({selectedTag.description})</span>}
+                                </>
+                              )}
                             </>
                           ) : (
                             <span className="italic">No tag selected</span>
@@ -555,8 +574,8 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                                       <SelectItem key={tag.id ?? idx} value={String(tag.id)} className="hover:bg-gray-100 cursor-pointer">
                                         <div className="flex flex-col">
                                           <span className="font-medium">{tag.label || tag.name}</span>
-                                          <span className="text-xs text-gray-400">ID: {tag.id}</span>
-                                          {tag.description && <span className="text-xs text-gray-500">{tag.description}</span>}
+                                          {/* <span className="text-xs text-gray-400">ID: {tag.id}</span>
+                                          {tag.description && <span className="text-xs text-gray-500">{tag.description}</span>} */}
                                         </div>
                                       </SelectItem>
                                     ))}
@@ -664,8 +683,8 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                                     <SelectItem key={tag.id ?? idx} value={String(tag.id)} className="hover:bg-gray-100 cursor-pointer">
                                       <div className="flex flex-col">
                                         <span className="font-medium">{tag.label || tag.name}</span>
-                                        <span className="text-xs text-gray-400">ID: {tag.id}</span>
-                                        {tag.description && <span className="text-xs text-gray-500">{tag.description}</span>}
+                                        {/* <span className="text-xs text-gray-400">ID: {tag.id}</span>
+                                        {tag.description && <span className="text-xs text-gray-500">{tag.description}</span>} */}
                                       </div>
                                     </SelectItem>
                                   ))}
@@ -675,7 +694,7 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                           )}
                         </div>
                         {/* Show selected tag at the top if chosen */}
-                        {!sectionDetails.isSingleOptionCorrect && (
+                        {/* {!sectionDetails.isSingleOptionCorrect && (
                           <div className={`text-xs rounded px-2 py-1 mt-1 w-fit ${selectedTag ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'}`}>
                             {selectedTag ? (
                               <>
@@ -686,7 +705,7 @@ const SectionDetails: React.FC<SectionDetailProps> = ({ section, onClose, open }
                               <span className="italic">No tag selected</span>
                             )}
                           </div>
-                        )}
+                        )} */}
                       </li>
                     );
                   })}
