@@ -233,18 +233,18 @@ export default function AssessmentPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <Button variant="ghost" size="sm" onClick={() => router.push(`/groups/${groupId}`)}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Exit Test
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 break-words">{groupName || "Untitled"}</h1>
+                <h1 className="text-xl font-bold text-gray-900">{groupName || "Untitled"}</h1>
                 <p className="text-sm text-gray-600">Section: {sectionName || "-"}</p>
               </div>
             </div>
-            <div className="flex items-center text-sm text-gray-600 mt-2 sm:mt-0">
+            <div className="flex items-center text-sm text-gray-600">
               <Clock className="w-4 h-4 mr-1" />
               {formatTime(timeRemaining)}
             </div>
@@ -263,7 +263,7 @@ export default function AssessmentPage() {
           <>
             {testConfig.showProgress && (
               <div className="mb-8">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-1">
+                <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-gray-700">
                     Question {currentQuestion + 1} of {questions.length}
                   </span>
@@ -280,94 +280,38 @@ export default function AssessmentPage() {
               <CardContent>{renderQuestion()}</CardContent>
             </Card>
 
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <Button variant="outline" onClick={prevQuestion} disabled={currentQuestion === 0} className="w-full sm:w-auto">
+            <div className="flex justify-between items-center">
+              <Button variant="outline" onClick={prevQuestion} disabled={currentQuestion === 0}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Previous
               </Button>
 
-              <div className="flex flex-wrap justify-center gap-2 max-w-full overflow-x-auto py-2">
-                {testConfig.allowReview && questions.length > 0 && (
-                  <>
-                    {/* Show first page button */}
-                    {currentQuestion > 3 && (
-                      <button
-                        onClick={() => setCurrentQuestion(0)}
-                        className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                          0 === currentQuestion
-                            ? "bg-blue-500 text-white"
-                            : answers[0] !== undefined
-                            ? "bg-green-100 text-green-800 border border-green-300"
-                            : "bg-gray-100 text-gray-600 border border-gray-300"
-                        }`}
-                      >
-                        1
-                      </button>
-                    )}
-                    
-                    {/* Ellipsis if needed */}
-                    {currentQuestion > 4 && (
-                      <span className="flex items-center justify-center w-8">...</span>
-                    )}
-                    
-                    {/* Show a window of pages around current page */}
-                    {questions.map((_, index) => {
-                      // Show current page and 1 page before and after on mobile, 2 on larger screens
-                      const windowSize = 2;
-                      const shouldShow = 
-                        index >= Math.max(0, currentQuestion - windowSize) && 
-                        index <= Math.min(questions.length - 1, currentQuestion + windowSize);
-                        
-                      if (!shouldShow) return null;
-                      
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentQuestion(index)}
-                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                            index === currentQuestion
-                              ? "bg-blue-500 text-white"
-                              : answers[index] !== undefined
-                              ? "bg-green-100 text-green-800 border border-green-300"
-                              : "bg-gray-100 text-gray-600 border border-gray-300"
-                          }`}
-                        >
-                          {index + 1}
-                        </button>
-                      );
-                    })}
-                    
-                    {/* Ellipsis if needed */}
-                    {currentQuestion < questions.length - 5 && (
-                      <span className="flex items-center justify-center w-8">...</span>
-                    )}
-                    
-                    {/* Show last page button */}
-                    {currentQuestion < questions.length - 4 && (
-                      <button
-                        onClick={() => setCurrentQuestion(questions.length - 1)}
-                        className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                          questions.length - 1 === currentQuestion
-                            ? "bg-blue-500 text-white"
-                            : answers[questions.length - 1] !== undefined
-                            ? "bg-green-100 text-green-800 border border-green-300"
-                            : "bg-gray-100 text-gray-600 border border-gray-300"
-                        }`}
-                      >
-                        {questions.length}
-                      </button>
-                    )}
-                  </>
-                )}
+              <div className="flex space-x-2">
+                {testConfig.allowReview &&
+                  questions.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentQuestion(index)}
+                      className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                        index === currentQuestion
+                          ? "bg-blue-500 text-white"
+                          : answers[index] !== undefined
+                          ? "bg-green-100 text-green-800 border border-green-300"
+                          : "bg-gray-100 text-gray-600 border border-gray-300"
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
               </div>
 
               {currentQuestion === questions.length - 1 ? (
-                <Button onClick={handleSubmit} className="w-full sm:w-auto">
+                <Button onClick={handleSubmit}>
                   Submit Test
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button onClick={nextQuestion} className="w-full sm:w-auto">
+                <Button onClick={nextQuestion}>
                   Next
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
