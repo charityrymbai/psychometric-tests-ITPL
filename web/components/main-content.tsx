@@ -1,4 +1,3 @@
-
 "use client"
 import { useState, useEffect } from "react"
 
@@ -26,13 +25,11 @@ import { TestResults } from "./test-results"
 import { TestInterface } from "./test-interface"
 
 
-
-
 interface MainContentProps {
   selectedItem: {
     type: "home" | "group" | "section" | "questions" | "settings" | "test" | "results"
     id?: string
-      group?: string
+    group?: string
     sectionId?: string
     data?: any
   }
@@ -73,25 +70,25 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
 
   // Dashboard
   const renderDashboard = () => (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 md:p-8">
       {/* Hero Section */}
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">Discover Your Potential</h1>
-        <p className="text-xl text-gray-600 mb-8">
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Discover Your Potential</h1>
+        <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8">
           Interactive psychometric assessments designed for Indian school students from Standards 1-12
         </p>
       </div>
       {/* Quick Stats */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         {groups.map((group: any) => (
           <Card key={group.id} className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-4">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className={`w-12 h-12 ${group.color} rounded-lg flex items-center justify-center`}>
-                  <group.icon className="w-6 h-6 text-white" />
+            <CardHeader className="pb-2 sm:pb-4">
+              <div className="flex items-center space-x-3 mb-2 sm:mb-3">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${group.color} rounded-lg flex items-center justify-center`}>
+                  <group.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl">{group.name}</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">{group.name}</CardTitle>
                   <Badge variant="secondary" className="mt-1">
                     {group.classes}
                   </Badge>
@@ -99,13 +96,16 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">{group.description}</p>
-              <div className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-600 mb-3 sm:mb-4">{group.description}</p>
+              <div className="text-sm text-gray-600 mb-3 sm:mb-4">
                 <p>
                   <strong>Total Tests:</strong> {group.totalTests}
                 </p>
               </div>
-              <Button className="w-full" onClick={() => router.push(`/groups/${group.id}`)}>
+              <Button 
+                className="w-full py-5 text-base" 
+                onClick={() => router.push(`/groups/${group.id}`)}
+              >
                 Explore Assessments
               </Button>
             </CardContent>
@@ -121,28 +121,28 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
     if (!group) return <div>Group not found</div>;
 
     return (
-      <div className="p-8">
-        <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className={`w-16 h-16 ${group.color} rounded-lg flex items-center justify-center`}>
-              <group.icon className="w-8 h-8 text-white" />
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-4">
+            <div className={`w-12 h-12 sm:w-16 sm:h-16 ${group.color} rounded-lg flex items-center justify-center`}>
+              <group.icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">{group.name}</h1>
               <p className="text-gray-600">
                 {group.classes} • {group.ageRange}
               </p>
             </div>
           </div>
-          <p className="text-lg text-gray-700 mb-6">{group.description}</p>
+          <p className="text-base sm:text-lg text-gray-700 mb-4 sm:mb-6">{group.description}</p>
 
           {/* Take All Tests Button */}
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+          <Card className="mb-6 sm:mb-8">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Complete Assessment Battery</h3>
-                  <p className="text-gray-600 mb-4">Take all tests in this group for comprehensive insights</p>
+                  <h3 className="text-lg sm:text-xl font-semibold mb-2">Complete Assessment Battery</h3>
+                  <p className="text-gray-600 mb-3 sm:mb-4">Take all tests in this group for comprehensive insights</p>
                   <div className="flex items-center space-x-4 text-sm text-gray-600">
                     <span className="flex items-center">
                       <Clock className="w-4 h-4 mr-1" />
@@ -150,11 +150,11 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
                     </span>
                     <span className="flex items-center">
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      {group.sections.length} Sections
+                      {group.sections?.length || 0} Sections
                     </span>
                   </div>
                 </div>
-                <Button size="lg" className="bg-gradient-to-r from-blue-500 to-purple-500">
+                <Button size="lg" className="w-full sm:w-auto py-5 text-base bg-gradient-to-r from-blue-500 to-purple-500">
                   <Play className="w-4 h-4 mr-2" />
                   Start All Tests
                 </Button>
@@ -166,16 +166,16 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
 
         {/* Individual Sections */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Individual Sections</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {group.sections.map((section: any) => (
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Individual Sections</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {group.sections?.map((section: any) => (
               <Card key={section.id} className="hover:shadow-lg transition-shadow duration-300">
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="text-lg">{section.name}</CardTitle>
                   <CardDescription>{section.description}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4 text-sm">
                     <div className="flex items-center text-gray-600">
                       <Clock className="w-4 h-4 mr-2" />
                       {section.duration}
@@ -186,12 +186,12 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
                     </div>
                   </div>
                   <Button
-                    className="w-full"
+                    className="w-full py-5 text-base"
                     onClick={() =>
                       onItemSelect({
                         type: "section",
                         id: section.id,
-                          group: group.id,
+                        group: group.id,
                       })
                     }
                   >
@@ -203,235 +203,124 @@ export function MainContent({ selectedItem, onItemSelect }: MainContentProps) {
           </div>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
+  // Section View
   const renderSectionView = () => {
-    const group = groups.find((g: any) => g.id === selectedItem.group);
-    const section = group?.sections.find((s: any) => s.id === selectedItem.id);
-
-    if (!group || !section) return <div>Section not found</div>
-
     return (
-      <div className="p-8">
-        <div className="mb-8">
-          <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-            <span>{group.name}</span>
-            <span>•</span>
-            <span>{section.name}</span>
-          </div>
-
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{section.name}</h1>
-          <p className="text-lg text-gray-700 mb-6">{section.description}</p>
-
-          {/* Section Stats */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold">{section.duration}</div>
-                <div className="text-sm text-gray-600">Duration</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold">{section.questions}</div>
-                <div className="text-sm text-gray-600">Questions</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <Users className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                <div className="text-2xl font-bold">{group.classes}</div>
-                <div className="text-sm text-gray-600">Target Group</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex space-x-4 mb-8">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-blue-500 to-purple-500"
-              onClick={() =>
-                onItemSelect({
-                  type: "test",
-                    group: group.id,
-                  sectionId: section.id,
-                })
-              }
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Start Test
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderQuestionsView = () => {
-    const group = groups.find((g: any) => g.id === selectedItem.group);
-    const section = group?.sections.find((s: any) => s.id === selectedItem.sectionId);
-
-    if (!group || !section) return <div>Questions not found</div>
-
-    return (
-      <div className="p-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
-                <span>{group.name}</span>
-                <span>•</span>
-                <span>{section.name}</span>
-                <span>•</span>
-                <span>Questions</span>
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900">Question Management</h1>
-              <p className="text-gray-600">Manage questions for {section.name}</p>
-            </div>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Question
-            </Button>
-          </div>
-        </div>
-
-        {/* Questions List */}
-        <div className="space-y-4">
-          {section.questionList?.map((question: any, index: number) => (
-            <Card key={question.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Badge variant="outline">Q{index + 1}</Badge>
-                      <Badge variant="secondary">{question.type}</Badge>
-                    </div>
-                    <p className="text-gray-900 mb-4">{question.text}</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <Card className="mb-6 sm:mb-8 shadow-lg">
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <CardTitle className="text-xl sm:text-2xl">Verbal Reasoning</CardTitle>
+                  <CardDescription>Assess verbal comprehension and language skills</CardDescription>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <Badge variant="outline" className="text-xs sm:text-sm px-2 py-1">
+                  Language Skills
+                </Badge>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <Brain className="w-4 h-4 mr-2" />
+                  Cognitive Assessment
+                </div>
+                <div className="flex items-center">
+                  <Target className="w-4 h-4 mr-2" />
+                  30 Questions
+                </div>
+                <div className="flex items-center">
+                  <Clock className="w-4 h-4 mr-2" />
+                  45 Minutes
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+              <div className="mb-6 sm:mb-8">
+                <h3 className="font-semibold mb-2">Description</h3>
+                <p className="text-gray-700 mb-4">
+                  This section evaluates the student's ability to understand and process language, including vocabulary, relationships between words, and verbal reasoning skills. It's designed to assess how well students can interpret and manipulate verbal information.
+                </p>
+                <h3 className="font-semibold mb-2">Skills Assessed</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Badge>Vocabulary</Badge>
+                  <Badge>Word Relationships</Badge>
+                  <Badge>Verbal Analogies</Badge>
+                  <Badge>Comprehension</Badge>
+                  <Badge>Language Logic</Badge>
+                </div>
+              </div>
+              <Button 
+                className="w-full sm:w-auto py-5 text-base" 
+                onClick={() =>
+                  onItemSelect({
+                    type: "test",
+                    id: selectedItem.id,
+                    groupId: selectedItem.group,
+                    sectionId: selectedItem.id,
+                  })
+                }
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Start Test
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Previous Results */}
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl">Previous Results</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+              <div className="text-center text-gray-600 p-8">
+                <Heart className="w-8 h-8 mx-auto mb-4 opacity-50" />
+                <p>You haven't taken this test yet.</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
-  const renderSettings = () => (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Group Management
-            </CardTitle>
-            <CardDescription>Create and manage assessment groups</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BookOpen className="w-5 h-5 mr-2" />
-              Section Management
-            </CardTitle>
-            <CardDescription>Manage test sections and categories</CardDescription>
-          </CardHeader>
-        </Card>
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Brain className="w-5 h-5 mr-2" />
-              AI Question Generator
-            </CardTitle>
-            <CardDescription>Generate questions using AI</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    </div>
-  )
-
+  // Test Interface
   const renderTestInterface = () => {
     return (
       <TestInterface
-          groupId={selectedItem.group!}
-        sectionId={selectedItem.sectionId!}
-        onTestComplete={(results: any) => {
-          // Handle test completion
-          onItemSelect({ type: "results", data: results })
+          groupId={selectedItem.group || ""}
+        sectionId={selectedItem.sectionId || ""}
+        onTestComplete={(results) => {
+          onItemSelect({
+            type: "results",
+            data: results,
+          });
         }}
         onItemSelect={onItemSelect}
       />
-    )
-  }
+    );
+  };
 
+  // Test Results
   const renderTestResults = () => {
-    return <TestResults results={selectedItem.data} onItemSelect={onItemSelect} />
-  }
+    return <TestResults results={selectedItem.data} onItemSelect={onItemSelect} />;
+  };
 
-  // Render content based on selected item
+  // Render the appropriate content based on the selected item type
   switch (selectedItem.type) {
     case "home":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderDashboard()}
-        </div>
-      )
+      return renderDashboard();
     case "group":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderGroupView()}
-        </div>
-      )
+      return renderGroupView();
     case "section":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderSectionView()}
-        </div>
-      )
-    case "questions":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderQuestionsView()}
-        </div>
-      )
+      return renderSectionView();
     case "test":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderTestInterface()}
-        </div>
-      )
+      return renderTestInterface();
     case "results":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderTestResults()}
-        </div>
-      )
-    case "settings":
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderSettings()}
-        </div>
-      )
+      return renderTestResults();
     default:
-      return (
-        <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-purple-50">
-          {renderDashboard()}
-        </div>
-      )
+      return <div>Select an item from the sidebar</div>;
   }
-
 }

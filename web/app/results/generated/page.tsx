@@ -38,6 +38,11 @@ interface TestResult {
   completedAt: string
   templateVersion: number
   isSingleOptionCorrect: boolean
+  userData?: {
+    id: string
+    name: string
+    class: number | string
+  } | null
 }
 
 interface TestSection {
@@ -75,6 +80,29 @@ function GeneratedResultsContent() {
           return;
         }
 
+        // Get user data from cookies
+        const getCookieValue = (name: string) => {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? match[2] : null;
+        };
+        
+        const userId = getCookieValue('user_id');
+        let userData = null;
+        
+        if (userId) {
+          try {
+            // Try to fetch user data from API
+            const userResponse = await fetch(`${BACKEND_URL}/user/${userId}`);
+            if (userResponse.ok) {
+              userData = await userResponse.json();
+              console.log("User data loaded:", userData);
+            }
+          } catch (error) {
+            console.error("Failed to fetch user data:", error);
+            // Continue without user data
+          }
+        }
+
         const assessmentData = JSON.parse(assessmentDataStr);
         console.log("=== ASSESSMENT DATA ===");
         console.log("Full assessment data:", assessmentData);
@@ -93,7 +121,7 @@ function GeneratedResultsContent() {
         console.log("Sample questions from backend:", sectionData.questions?.slice(0, 2));
         
         // Generate results based on answers
-        const generatedResult = await generateTestResults(assessmentData, sectionData);
+        const generatedResult = await generateTestResults(assessmentData, sectionData, userData);
         console.log("=== GENERATED RESULT ===");
         console.log("Generated result:", generatedResult);
         setTestResult(generatedResult);
@@ -109,7 +137,7 @@ function GeneratedResultsContent() {
   }, [])
 
   // Function to generate test results from assessment data
-  const generateTestResults = async (assessmentData: any, sectionData: any): Promise<TestResult> => {
+  const generateTestResults = async (assessmentData: any, sectionData: any, userData: any = null): Promise<TestResult> => {
     const { answers, testId, groupName, sectionName, completedAt, timeSpent, questions, groupId, sectionId, isSingleOptionCorrect } = assessmentData;
     
     // Get section configuration - use from assessmentData if available, otherwise from sectionData
@@ -256,7 +284,8 @@ function GeneratedResultsContent() {
       timeSpent: timeSpent || 0,
       completedAt: completedAt || new Date().toISOString(),
       templateVersion: 0,
-      isSingleOptionCorrect: actualIsSingleOptionCorrect
+      isSingleOptionCorrect: actualIsSingleOptionCorrect,
+      userData: userData
     };
   }
 
@@ -380,6 +409,10 @@ function GeneratedResultsContent() {
             .header { text-align: center; margin-bottom: 30px; }
             .score { font-size: 24px; font-weight: bold; color: #059669; }
             .assessment-type { font-size: 24px; font-weight: bold; color: #3b82f6; }
+            .user-info { border: 1px solid #e2e8f0; padding: 15px; margin: 20px 0; border-radius: 8px; }
+            .user-info h2 { margin-top: 0; }
+            .user-detail { margin: 8px 0; }
+            .user-label { font-weight: bold; }
           </style>
         </head>
         <body>
@@ -387,6 +420,16 @@ function GeneratedResultsContent() {
             <h1>${testResult.testTitle}</h1>
             <p>${testResult.groupName}</p>
           </div>
+          
+          ${testResult.userData ? `
+          <div class="user-info">
+            <h2>Student Information</h2>
+            <div class="user-detail"><span class="user-label">Name:</span> ${testResult.userData.name}</div>
+            <div class="user-detail"><span class="user-label">Class:</span> ${testResult.userData.class}</div>
+            <div class="user-detail"><span class="user-label">ID:</span> ${testResult.userData.id}</div>
+          </div>
+          ` : ''}
+          
           ${scoreSection}
           <p>Time Taken: ${formatTime(testResult.timeSpent)}</p>
           <p>Completed: ${formatDate(testResult.completedAt)}</p>
@@ -484,6 +527,31 @@ function GeneratedResultsContent() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8">
+        {/* User Information */}
+        {testResult.userData && (
+          <div className="mb-8">
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Student Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Name</p>
+                    <p className="text-lg font-medium">{testResult.userData.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Class</p>
+                    <p className="text-lg font-medium">{testResult.userData.class}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">ID</p>
+                    <p className="text-lg font-medium">{testResult.userData.id}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        
         {/* Celebration Banner */}
         <div className="mb-8">
           <Card className={`border-emerald-200 ${hasScoringSections ? 'bg-gradient-to-r from-emerald-50 to-teal-50' : 'bg-gradient-to-r from-blue-50 to-purple-50'}`}>

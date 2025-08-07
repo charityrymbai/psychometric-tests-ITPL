@@ -5,7 +5,6 @@ import {TreeSidebar} from "@/components/tree-sidebar"
 import { GroupForm } from "@/components/group-form"
 import { SectionForm } from "@/components/section-form"
 import SectionDetails from "@/components/section-details"
-// import groupsRaw from "@/data/groups.json";
 import { useEffect } from "react";
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 

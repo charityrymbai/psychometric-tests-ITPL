@@ -35,6 +35,11 @@ interface MultiTestResult {
   timeSpent: number
   totalQuestions: number
   answeredQuestions: number
+  userData?: {
+    user_id: string
+    name: string
+    class: number | string
+  } | null
 }
 
 interface SectionResult {
@@ -72,6 +77,29 @@ export default function MultiGeneratedResultsPage() {
           return;
         }
 
+        // Get user data from cookies
+        const getCookieValue = (name: string) => {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? match[2] : null;
+        };
+        
+        const userId = getCookieValue('user_id');
+        let userData = null;
+        
+        if (userId) {
+          try {
+            // Try to fetch user data from API
+            const userResponse = await fetch(`${BACKEND_URL}/user/${userId}`);
+            if (userResponse.ok) {
+              userData = await userResponse.json();
+              console.log("User data loaded:", userData);
+            }
+          } catch (error) {
+            console.error("Failed to fetch user data:", error);
+            // Continue without user data
+          }
+        }
+
         const multiAssessmentData = JSON.parse(multiAssessmentDataStr);
         console.log("=== MULTI ASSESSMENT DATA ===");
         console.log("Full multi-assessment data:", multiAssessmentData);
@@ -98,7 +126,14 @@ export default function MultiGeneratedResultsPage() {
 
         const validSections = processedSections.filter(section => section !== null);
         setProcessedSections(validSections);
-        setTestResult(multiAssessmentData);
+        
+        // Add user data to the test result
+        const testResultWithUser = {
+          ...multiAssessmentData,
+          userData: userData
+        };
+        
+        setTestResult(testResultWithUser);
         
       } catch (error) {
         console.error("Error loading multi-test result:", error);
@@ -283,6 +318,7 @@ export default function MultiGeneratedResultsPage() {
           timeSpent: Math.floor(testResult.timeSpent / processedSections.length),
           completedAt: testResult.completedAt,
           templateVersion: 0,
+          userData: testResult.userData,
           isSingleOptionCorrect: section.sectionType === 'score'
         }
 
@@ -445,6 +481,31 @@ export default function MultiGeneratedResultsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* User Information */}
+        {testResult.userData && (
+          <div className="mb-8">
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Student Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Name</p>
+                    <p className="text-lg font-medium">{testResult.userData.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Class</p>
+                    <p className="text-lg font-medium">{testResult.userData.class}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">ID</p>
+                    <p className="text-lg font-medium">{testResult.userData.user_id}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

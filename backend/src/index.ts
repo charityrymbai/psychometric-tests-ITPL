@@ -6,6 +6,7 @@ import tagsRouter from './routes/tags.js';
 import questionsRouter from './routes/questions.js';
 import commonRouter from './routes/common.js';
 import reportsRouter from './routes/reports.js';
+import userRouter from './routes/user.js';
 
 const app = express();
 const port = 3002;
@@ -29,6 +30,7 @@ app.use('/sections', sectionsRouter);
 app.use('/tags', tagsRouter);
 app.use('/questions', questionsRouter);
 app.use('/reports', reportsRouter);
+app.use('/user', userRouter); 
 
 
 app.listen(port, () => {
