@@ -104,26 +104,15 @@ function GeneratedResultsContent() {
         }
 
         const assessmentData = JSON.parse(assessmentDataStr);
-        console.log("=== ASSESSMENT DATA ===");
-        console.log("Full assessment data:", assessmentData);
-        console.log("isSingleOptionCorrect:", assessmentData.isSingleOptionCorrect);
-        console.log("Sample questions from localStorage:", assessmentData.questions?.slice(0, 2));
         
         // Always fetch section data to get questions with correct_option
-        console.log("=== FETCHING SECTION DATA ===");
         const sectionResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/questions/${assessmentData.testId}`);
         if (!sectionResponse.ok) throw new Error("Failed to fetch section data");
         
         const sectionData = await sectionResponse.json();
-        console.log("=== SECTION DATA FROM BACKEND ===");
-        console.log("Full section data:", sectionData);
-        console.log("isSingleOptionCorrect:", sectionData.isSingleOptionCorrect);
-        console.log("Sample questions from backend:", sectionData.questions?.slice(0, 2));
         
         // Generate results based on answers
         const generatedResult = await generateTestResults(assessmentData, sectionData, userData);
-        console.log("=== GENERATED RESULT ===");
-        console.log("Generated result:", generatedResult);
         setTestResult(generatedResult);
         
       } catch (error) {
@@ -166,17 +155,28 @@ function GeneratedResultsContent() {
     }
     
     // Process each answer for scoring (if applicable)
-    // Always use questions from sectionData for scoring as they have correct_option
-    const questionsToUse = sectionData.questions || questions;
+    // Use the questions from the assessment that were actually shown to the user
+    // The sectionData.questions contains ALL questions from the section,
+    // but we need only the ones that were actually answered
+    const questionsToUse = questions; // Use the questions from the assessment
     
-    console.log("Questions for scoring:", {
-      actualIsSingleOptionCorrect,
-      questionsFromSection: sectionData.questions?.length || 0,
-      questionsFromAssessment: questions.length,
-      questionsToUse: questionsToUse.length,
-      sampleQuestion: questionsToUse[0],
-      sampleQuestionKeys: questionsToUse[0] ? Object.keys(questionsToUse[0]) : []
-    });
+    // If we need backend data for correct answers, we'll need to fetch them by ID
+    if (actualIsSingleOptionCorrect && sectionData.questions) {
+      // Match assessment questions with backend questions by ID to get correct_option
+      const backendQuestionsMap = new Map();
+      sectionData.questions.forEach((q: any) => {
+        backendQuestionsMap.set(String(q.id), q);
+      });
+      
+      // Enhance assessment questions with correct_option from backend
+      questionsToUse.forEach((q: any, index: number) => {
+        const backendQ = backendQuestionsMap.get(String(q.id));
+        if (backendQ) {
+          q.correct_option = backendQ.correct_option;
+          q.options = backendQ.options; // Use backend options to ensure consistency
+        }
+      });
+    }
     
     questionsToUse.forEach((question: any, index: number) => {
       const userAnswer = answers[index];
@@ -198,24 +198,18 @@ function GeneratedResultsContent() {
               // Handle both string options and object options {text: "..."}
               const correctText = typeof correctOptionText === 'string' ? correctOptionText : correctOptionText?.text;
               isCorrect = userAnswer === correctText;
-              console.log(`Question ${index}: answer="${userAnswer}", correctIndex=${question.correct_option}, correctText="${correctText}", match=${isCorrect}`);
             } else {
               // Direct comparison fallback
               isCorrect = userAnswer === question.correct_option;
-              console.log(`Question ${index}: answer="${userAnswer}", correct="${question.correct_option}", match=${isCorrect}`);
             }
             
             if (isCorrect) {
               totalScore++;
             }
-          } else {
-            console.log(`Question ${index}: no correct_option found`, question);
           }
         }
       }
     });
-    
-    console.log("Scoring results:", { totalScore, totalQuestions, answeredQuestions, actualIsSingleOptionCorrect, sectionType });
 
     // Create sections based on the test type
     const sections: TestSection[] = [];

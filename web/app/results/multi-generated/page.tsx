@@ -101,8 +101,6 @@ export default function MultiGeneratedResultsPage() {
         }
 
         const multiAssessmentData = JSON.parse(multiAssessmentDataStr);
-        console.log("=== MULTI ASSESSMENT DATA ===");
-        console.log("Full multi-assessment data:", multiAssessmentData);
         
         // Process each section
         const processedSections = await Promise.all(
@@ -159,7 +157,26 @@ export default function MultiGeneratedResultsPage() {
     let answeredQuestions = 0;
     
     // Use questions from backend for scoring (they have correct_option)
-    const questionsToUse = backendSectionData.questions || questions;
+    // But only use the questions that were actually shown in the assessment
+    const questionsToUse = questions; // Use the questions from the assessment
+    
+    // If we need backend data for correct answers, enhance assessment questions
+    if (actualIsSingleOptionCorrect && backendSectionData.questions) {
+      // Match assessment questions with backend questions by ID to get correct_option
+      const backendQuestionsMap = new Map();
+      backendSectionData.questions.forEach((q: any) => {
+        backendQuestionsMap.set(String(q.id), q);
+      });
+      
+      // Enhance assessment questions with correct_option from backend
+      questionsToUse.forEach((q: any, index: number) => {
+        const backendQ = backendQuestionsMap.get(String(q.id));
+        if (backendQ) {
+          q.correct_option = backendQ.correct_option;
+          q.options = backendQ.options; // Use backend options to ensure consistency
+        }
+      });
+    }
     
     // Process answers for scoring
     questionsToUse.forEach((question: any, index: number) => {
@@ -297,10 +314,6 @@ export default function MultiGeneratedResultsPage() {
 
     setIsSaving(true)
     try {
-      console.log("=== SAVING MULTI-ASSESSMENT RESULTS ===")
-      console.log("Test result:", testResult)
-      console.log("Processed sections:", processedSections)
-      
       // Create individual result for each section
       const savePromises = processedSections.map(async (section, index) => {
         // Create the data structure that matches the backend schema
