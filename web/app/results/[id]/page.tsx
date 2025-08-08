@@ -38,7 +38,7 @@ import {
 } from "recharts";
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3002";
+  process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:3002";
 
 interface Tag {
   tag: string;
