@@ -24,8 +24,6 @@ import {
   Brain,
   Calendar,
   Clock,
-  TrendingUp,
-  CheckCircle,
   Target,
 } from "lucide-react";
 import {
@@ -37,8 +35,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:3002";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+
+if (!BACKEND_URL) {
+  throw new Error("NEXT_PUBLIC_BACKEND_BASE_URL is not defined");
+}
+
+console.log("Using backend URL:", BACKEND_URL);
 
 interface Tag {
   tag: string;
