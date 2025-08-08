@@ -280,13 +280,13 @@ export default function AssessmentPage() {
               <CardContent>{renderQuestion()}</CardContent>
             </Card>
 
-            <div className="flex justify-between items-center">
+            <div className="flex sm:flex-row flex-col sm:gap-0 gap-4 sm:justify-between items-center">
               <Button variant="outline" onClick={prevQuestion} disabled={currentQuestion === 0}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Previous
               </Button>
 
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-6 md:grid-cols-8 gap-2">
                 {testConfig.allowReview &&
                   questions.map((_, index) => (
                     <button

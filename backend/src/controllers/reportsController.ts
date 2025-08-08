@@ -1,3 +1,32 @@
+// Get reports by user_id
+export const getReportsByUserId = async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        message: 'Invalid user ID',
+      });
+    }
+    const response = await reportsService.getReportsByUserId(userId);
+    if (response.success) {
+      res.json({
+        message: response.message,
+        reports: response.data,
+      });
+    } else {
+      res.status(500).json({
+        message: response.message,
+        error: response.error,
+      });
+    }
+  } catch (error) {
+    console.error('Error in getReportsByUserId controller:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};
 import * as reportsService from '../services/reportsService.js';
 import { CreateReportSchema } from '../zod/reports.js';
 import { Request, Response } from 'express';
@@ -13,8 +42,8 @@ export const createReport = async (req: Request, res: Response) => {
       });
     }
 
-    const { data, version } = validation.data;
-    const response = await reportsService.createReport(data, version);
+    const { data, version, user_id } = validation.data;
+    const response = await reportsService.createReport(data, version, user_id);
 
     if (response.success) {
       res.status(201).json({

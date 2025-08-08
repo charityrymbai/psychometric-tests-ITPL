@@ -80,14 +80,27 @@ export default function ResultsPage() {
     fetchReports()
   }, [])
 
+  const getCookieValue = (name: string) => {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : null;
+  };
+
   const fetchReports = async () => {
     try {
       setLoading(true)
       setError(null)
-      
-      const response = await fetch(`${BACKEND_URL}/reports/getAll`)
+
+      const userId = getCookieValue('user_id');
+      if (!userId) {
+        setReports([]);
+        setError('No user ID found. Please log in.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/reports/user/${userId}`)
       const result = await response.json()
-      
+
       if (response.ok) {
         setReports(result.reports || [])
       } else {
@@ -456,18 +469,17 @@ export default function ResultsPage() {
                       <Progress value={overallPercentage} className="h-2" />
                       
                       <div className="flex space-x-2 pt-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="flex-1"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            viewReport(report.id, String(report.testTitle))
-                          }}
-                        >
-                          <ExternalLink className="w-3 h-3 mr-1" />
-                          View
-                        </Button>
+                        <Link href={`/results/${report.id}`} passHref legacyBehavior>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="flex-1"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            View
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </CardContent>

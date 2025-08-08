@@ -37,6 +37,7 @@ export const TestResultSchema = z.object({
 export const CreateReportSchema = z.object({
   data: TestResultSchema,
   version: z.number(),
+  user_id: z.number(),
 });
 
 // Export types

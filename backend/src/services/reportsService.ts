@@ -1,14 +1,45 @@
+// Get reports by user_id
+export const getReportsByUserId = async (userId: number) => {
+  try {
+    const db = await dbPromise;
+    const [rows] = await db.execute(
+      `SELECT id, 
+              JSON_EXTRACT(data, '$.testTitle') as testTitle, 
+              JSON_EXTRACT(data, '$.groupName') as groupName,
+              JSON_EXTRACT(data, '$.completedAt') as completedAt,
+              JSON_EXTRACT(data, '$.totalScore') as totalScore,
+              JSON_EXTRACT(data, '$.totalQuestions') as totalQuestions,
+              version, created_at
+      FROM reports_generated 
+      WHERE user_id = ?
+      ORDER BY created_at DESC`,
+      [userId]
+    );
+    return {
+      success: true,
+      message: "Reports retrieved successfully",
+      data: rows,
+    };
+  } catch (error) {
+    console.error("Error retrieving reports by userId:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve reports",
+      error,
+    };
+  }
+};
 import dbPromise from '../config/db.js';
 import { TestResult } from '../zod/reports.js';
 
-export const createReport = async (data: TestResult, version: number = 0) => {
+export const createReport = async (data: TestResult, version: number = 0, user_id?: number) => {
   try {
     const db = await dbPromise;
     // Always stringify data to ensure valid JSON
     const safeData = JSON.stringify(typeof data === 'string' ? JSON.parse(data) : data);
     const [result] = await db.execute(
-      `INSERT INTO reports_generated (data, version) VALUES (?, ?)`,
-      [safeData, version]
+      `INSERT INTO reports_generated (data, version, user_id) VALUES (?, ?, ?)`,
+      [safeData, version, user_id]
     );
 
     return {

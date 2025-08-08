@@ -1,7 +1,11 @@
+
 import { Router } from "express";
 import * as reportsController from "../controllers/reportsController.js";
 
 const router = Router();
+
+// Get reports by user ID
+router.get('/user/:userId', reportsController.getReportsByUserId);
 
 // Create a new report
 router.post('/create', reportsController.createReport);

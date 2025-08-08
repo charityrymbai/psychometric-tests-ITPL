@@ -39,7 +39,7 @@ interface TestResult {
   templateVersion: number
   isSingleOptionCorrect: boolean
   userData?: {
-    id: string
+    user_id: string
     name: string
     class: number | string
   } | null
@@ -341,14 +341,47 @@ function GeneratedResultsContent() {
 
     setIsSaving(true)
     try {
+      // Get user_id from cookie
+      const getCookieValue = (name: string) => {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? match[2] : null;
+      };
+      const userId = getCookieValue('user_id');
+
+      // Always include userData in the report data
+      let userData = testResult.userData;
+      if (!userData && userId) {
+        // Try to fetch user info from API
+        try {
+          const userResponse = await fetch(`${BACKEND_URL}/user/${userId}`);
+          if (userResponse.ok) {
+            const userInfo = await userResponse.json();
+            userData = {
+              user_id: userInfo.user_id || userInfo.id || userId,
+              name: userInfo.name || '',
+              class: userInfo.class || ''
+            };
+          }
+        } catch (err) {
+          // fallback to user_id only
+          userData = { user_id: userId, name: '', class: '' };
+        }
+      }
+
+      const reportData = {
+        ...testResult,
+        userData
+      };
+
       const response = await fetch(`${BACKEND_URL}/reports/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          data: testResult,
-          version: 0 // Use latest template version
+          data: reportData,
+          version: 0, // Use latest template version
+          user_id: userId ? Number(userId) : undefined
         }),
       })
 
@@ -426,7 +459,7 @@ function GeneratedResultsContent() {
             <h2>Student Information</h2>
             <div class="user-detail"><span class="user-label">Name:</span> ${testResult.userData.name}</div>
             <div class="user-detail"><span class="user-label">Class:</span> ${testResult.userData.class}</div>
-            <div class="user-detail"><span class="user-label">ID:</span> ${testResult.userData.id}</div>
+            <div class="user-detail"><span class="user-label">ID:</span> ${testResult.userData.user_id}</div>
           </div>
           ` : ''}
           
@@ -544,7 +577,7 @@ function GeneratedResultsContent() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-500 mb-1">ID</p>
-                    <p className="text-lg font-medium">{testResult.userData.id}</p>
+                    <p className="text-lg font-medium">{testResult.userData.user_id}</p>
                   </div>
                 </div>
               </CardContent>

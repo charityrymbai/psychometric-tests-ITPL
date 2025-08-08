@@ -1,565 +1,308 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { 
-  Award, 
-  CheckCircle, 
-  Clock, 
-  Download, 
-  Home, 
+import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Button,
+} from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  AlertCircle,
   ArrowLeft,
-  Target,
-  Brain,
-  ExternalLink,
-  Calendar,
-  TrendingUp,
+  Home,
   FileText,
-  AlertCircle
-} from "lucide-react"
-import Link from "next/link"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+  Award,
+  Brain,
+  Calendar,
+  Clock,
+  TrendingUp,
+  CheckCircle,
+  Target,
+} from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || 'http://localhost:3002'
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3002";
 
-// Types
-interface TestResult {
-  testId: string
-  testTitle: string
-  groupId: string
-  groupName: string
-  sections: TestSection[]
-  totalScore: number
-  totalQuestions: number
-  timeSpent: number
-  completedAt: string
-  templateVersion: number
-  isSingleOptionCorrect?: boolean
+interface Tag {
+  tag: string;
+  count: number;
+  percentage: number;
 }
 
-interface TestSection {
-  sectionId: string
-  sectionName: string
-  sectionType: 'score' | 'tags'
-  score?: number
-  totalQuestions?: number
-  percentage?: number
-  tags?: TagResult[]
+interface Section {
+  section: string;
+  text: string;
+  summary: string;
+  score: number;
+  percentage?: number;
+  tags?: { tag: string; count: number }[];
 }
 
-interface TagResult {
-  tagName: string
-  tagCount: number
-  color: string
-}
-
-interface ReportData {
-  id: number
-  data: TestResult
-  version: number
-  createdAt: string
+interface Report {
+  filename?: string;
+  processing_time?: number;
+  report_generated_at?: string;
+  total_score?: number;
+  sections?: Section[];
+  recommendations?: string[];
+  overall_summary?: string;
+  createdAt?: string;
+  version?: string;
+  id?: number;
+  data?: any;
 }
 
 export default function ResultDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [report, setReport] = useState<ReportData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const reportId = params.id as string
+  const { id } = useParams();
+  const router = useRouter();
+  const [report, setReport] = useState<Report | null>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (reportId) {
-      fetchReportDetails()
-    }
-  }, [reportId])
+    if (!id) return;
 
-  const fetchReportDetails = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const response = await fetch(`${BACKEND_URL}/reports/${reportId}`)
-      const result = await response.json()
-      
-      if (response.ok) {
-        let reportData = result.report
+    async function fetchReport() {
+      try {
+        const res = await fetch(`${BACKEND_URL}/reports/${id}`);
+        if (!res.ok) throw new Error("Failed to fetch report");
+        const data = await res.json();
+        setReport(data.report);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load report");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function fetchUserInfo() {
+      try {
+        // Get user_id from cookie
+        const getCookieValue = (name: string) => {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? match[2] : null;
+        };
         
-        // Check if we need to enhance tag data for non-scoring sections
-        if (reportData.data && reportData.data.sections) {
-          const hasTagSections = reportData.data.sections.some((section: any) => section.sectionType === 'tags')
-          const needsTagEnhancement = hasTagSections && reportData.data.sections.some((section: any) => 
-            section.sectionType === 'tags' && (!section.tags || section.tags.length === 0 || section.tags.some((tag: any) => !tag.color))
-          )
-          
-          if (needsTagEnhancement) {
-            console.log('Enhancing tag data for report:', reportData.data)
-            reportData.data = await enhanceTagData(reportData.data)
+        const userId = getCookieValue('user_id');
+        if (userId) {
+          const userRes = await fetch(`${BACKEND_URL}/user/${userId}`);
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            setUserInfo(userData);
           }
         }
-        
-        setReport(reportData)
-      } else {
-        setError(result.message || 'Failed to fetch report details')
+      } catch (userErr) {
+        console.error("Failed to fetch user info:", userErr);
       }
-    } catch (err) {
-      setError('Failed to connect to the server')
-      console.error('Error fetching report details:', err)
-    } finally {
-      setLoading(false)
     }
-  }
 
-  const enhanceTagData = async (testResult: any) => {
-    try {
-      // Get section data from backend to fetch available tags
-      const sectionResponse = await fetch(`${BACKEND_URL}/questions/${testResult.testId}`)
-      if (sectionResponse.ok) {
-        const sectionData = await sectionResponse.json()
-        console.log('Section data for enhancement:', sectionData)
-        
-        // Helper function to assign colors to tags
-        const getTagColor = (tagName: string): string => {
-          const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16']
-          const hash = tagName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-          return colors[hash % colors.length]
-        }
-
-        // Enhance sections with proper tag data
-        const enhancedSections = testResult.sections.map((section: any) => {
-          if (section.sectionType === 'tags') {
-            let enhancedTags = section.tags || []
-            
-            // If we have database tags, use those with proper distribution
-            if (sectionData.tags && sectionData.tags.length > 0) {
-              const totalResponses = section.tags?.reduce((sum: number, tag: any) => sum + (tag.tagCount || 0), 0) || 10
-              enhancedTags = sectionData.tags.map((dbTag: any, index: number) => ({
-                tagName: dbTag.name,
-                tagCount: Math.floor(totalResponses / sectionData.tags.length) + (index === 0 ? totalResponses % sectionData.tags.length : 0),
-                color: getTagColor(dbTag.name)
-              }))
-            } else if (!enhancedTags.length || enhancedTags.some((tag: any) => !tag.color)) {
-              // Generate meaningful tags based on test type
-              const defaultTags = [
-                'Analytical Thinking',
-                'Creative Problem Solving', 
-                'Collaborative Approach',
-                'Independent Work Style',
-                'Detail Oriented'
-              ]
-              const totalResponses = 15 // Default response count
-              enhancedTags = defaultTags.map((tagName, index) => ({
-                tagName,
-                tagCount: Math.floor(totalResponses / defaultTags.length) + (index === 0 ? totalResponses % defaultTags.length : 0),
-                color: getTagColor(tagName)
-              }))
-            } else {
-              // Just add colors to existing tags
-              enhancedTags = enhancedTags.map((tag: any) => ({
-                ...tag,
-                color: tag.color || getTagColor(tag.tagName)
-              }))
-            }
-            
-            return {
-              ...section,
-              tags: enhancedTags
-            }
-          }
-          return section
-        })
-        
-        return {
-          ...testResult,
-          sections: enhancedSections
-        }
-      }
-    } catch (error) {
-      console.error('Error enhancing tag data:', error)
-    }
-    
-    return testResult
-  }
-
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`
-    }
-    return `${minutes}m`
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const getScoreColor = (percentage: number) => {
-    if (percentage >= 80) return "text-emerald-600"
-    if (percentage >= 60) return "text-amber-600"
-    return "text-rose-600"
-  }
-
-  const getScoreBadge = (percentage: number) => {
-    if (percentage >= 80) return { 
-      class: "bg-emerald-50 text-emerald-700 border-emerald-200", 
-      label: "Excellent" 
-    }
-    if (percentage >= 60) return { 
-      class: "bg-amber-50 text-amber-700 border-amber-200", 
-      label: "Good" 
-    }
-    return { 
-      class: "bg-rose-50 text-rose-700 border-rose-200", 
-      label: "Needs Work" 
-    }
-  }
+    fetchReport();
+    fetchUserInfo();
+  }, [id]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="text-lg text-slate-600">Loading your results...</p>
-            </div>
-          </div>
-        </div>
+      <div className="container mx-auto py-8 text-center">
+        <p>Loading report...</p>
       </div>
-    )
+    );
   }
 
   if (error || !report) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="max-w-md mx-auto border-rose-200">
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-rose-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-8 h-8 text-rose-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                  {error || "Report Not Found"}
-                </h3>
-                <p className="text-slate-600 mb-6">
-                  {error || "The requested test result could not be found."}
-                </p>
-                <div className="space-y-3">
-                  <Link href="/results">
-                    <Button className="w-full">
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Results
-                    </Button>
-                  </Link>
-                  <Link href="/">
-                    <Button variant="outline" className="w-full">
-                      <Home className="w-4 h-4 mr-2" />
-                      Home
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      <div className="container mx-auto py-8">
+        <Card className="bg-red-50 border-red-200">
+          <CardHeader>
+            <CardTitle className="text-red-700 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" /> Error
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{error || "Report not found"}</p>
+            <Button
+              onClick={() => router.push("/")}
+              className="mt-4"
+              variant="outline"
+            >
+              <Home className="mr-2 h-4 w-4" /> Back to Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    )
+    );
   }
 
-  const result = report.data
-  const hasScoring = result.isSingleOptionCorrect === true || (result.isSingleOptionCorrect !== false && result.sections.some(s => s.sectionType === 'score'))
-  const overallPercentage = hasScoring && result.totalQuestions > 0 ? Math.round((result.totalScore / result.totalQuestions) * 100) : 0
+  const COLORS = [
+    "#0088FE",
+    "#00C49F",
+    "#FFBB28",
+    "#FF8042",
+    "#8884D8",
+    "#82CA9D",
+  ];
+
+  const enhanceTagData = (sectionData: Section) => {
+    if (!sectionData.tags) return [];
+    const totalTags = sectionData.tags.reduce((sum, t) => sum + t.count, 0);
+    return sectionData.tags.map((t) => ({
+      name: t.tag,
+      value: t.count,
+      percentage: totalTags > 0 ? ((t.count / totalTags) * 100).toFixed(1) : 0,
+    }));
+  };
+
+  // Prepare sections JSX
+  let sectionsContent: React.ReactNode[] = [];
+  if (report.data && Array.isArray(report.data.sections) && report.data.sections.length > 0) {
+    sectionsContent = report.data.sections.map((section: any, idx: number) => (
+      <Card key={idx}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-purple-500" />
+            {section.sectionName}
+          </CardTitle>
+          <CardDescription>AI evaluation and breakdown</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Score */}
+          <div>
+            <div className="flex justify-between mb-2">
+              <span className="font-medium">Score</span>
+              <span className="text-primary font-bold">
+                {typeof section.percentage === 'number'
+                  ? section.percentage.toFixed(1)
+                  : (typeof section.score === 'number' ? section.score.toFixed(1) : '-')}
+                %
+              </span>
+            </div>
+            <Progress
+              value={
+                section.percentage !== undefined
+                  ? section.percentage
+                  : section.score
+              }
+            />
+          </div>
+          {/* Summary */}
+          <div>
+            <h4 className="font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Section Summary
+            </h4>
+            <p>{section.sectionName}</p>
+          </div>
+        </CardContent>
+      </Card>
+    ));
+  } else {
+    sectionsContent = [
+      <div className="col-span-full text-center text-gray-500" key="no-sections">
+        No sections available
+      </div>
+    ];
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="container mx-auto py-8 px-4 space-y-8">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/60 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/results">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Results
-                </Button>
-              </Link>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">{report.filename}</h1>
+          <p className="text-gray-500 flex items-center gap-2 mt-1">
+            <Calendar className="h-4 w-4" />
+            {report.createdAt ? new Date(report.createdAt).toLocaleString() : '-'}
+            <Clock className="h-4 w-4 ml-4" />
+            {report.data && typeof report.data.timeSpent === 'number' ? report.data.timeSpent.toFixed(2) : '-'}s
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Results
+          </Link>
+        </Button>
+      </div>
+
+      {/* Student Information */}
+      {userInfo && (
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className="p-6">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Student Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-slate-500 mb-1">Name</p>
+                <p className="text-lg font-medium">{userInfo.name}</p>
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">{result.testTitle}</h1>
-                <p className="text-slate-600">{result.groupName} • Saved Result</p>
+                <p className="text-sm text-slate-500 mb-1">Class</p>
+                <p className="text-lg font-medium">{userInfo.class}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 mb-1">ID</p>
+                <p className="text-lg font-medium">{userInfo.user_id}</p>
               </div>
             </div>
-            <div className="flex space-x-3">
-              <Link href="/">
-                <Button variant="outline">
-                  <Home className="w-4 h-4 mr-2" />
-                  Home
-                </Button>
-              </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5 text-yellow-500" /> Overall Score
+          </CardTitle>
+          <CardDescription>Student's Test Score</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6">
+            <div className="text-5xl font-bold text-primary">
+              {report.data && typeof report.data.totalScore === 'number' && typeof report.data.totalQuestions === 'number' && report.data.totalQuestions > 0 
+                ? Math.round((report.data.totalScore / report.data.totalQuestions) * 100).toFixed(1) 
+                : '-'}%
             </div>
+            <Progress value={
+              report.data && typeof report.data.totalScore === 'number' && typeof report.data.totalQuestions === 'number' && report.data.totalQuestions > 0 
+                ? Math.round((report.data.totalScore / report.data.totalQuestions) * 100)
+                : 0
+            } className="w-2/3" />
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Result Header */}
-        <div className="mb-8">
-          <Card className={`border-blue-200 ${hasScoring ? 'bg-gradient-to-r from-blue-50 to-indigo-50' : 'bg-gradient-to-r from-purple-50 to-pink-50'}`}>
-            <CardContent className="p-8">
-              <div className="flex items-center justify-between flex-wrap gap-6">
-                <div className="flex items-center space-x-6">
-                  <div className={`w-20 h-20 ${hasScoring ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-purple-500 to-pink-600'} rounded-2xl flex items-center justify-center`}>
-                    {hasScoring ? <Award className="w-10 h-10 text-white" /> : <Brain className="w-10 h-10 text-white" />}
-                  </div>
-                  <div>
-                    {hasScoring ? (
-                      <>
-                        <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                          {overallPercentage}% Score
-                        </h2>
-                        <p className="text-lg text-slate-600">
-                          {result.totalScore} out of {result.totalQuestions} questions correct
-                        </p>
-                        <Badge className={getScoreBadge(overallPercentage).class} variant="secondary">
-                          {getScoreBadge(overallPercentage).label}
-                        </Badge>
-                      </>
-                    ) : (
-                      <>
-                        <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                          Assessment Complete
-                        </h2>
-                        <p className="text-lg text-slate-600">
-                          Your responses have been analyzed below
-                        </p>
-                        <Badge className="bg-purple-50 text-purple-700 border-purple-200" variant="secondary">
-                          Tag-based Assessment
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right space-y-2">
-                  <div className="flex items-center text-slate-600">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Completed: {formatDate(result.completedAt)}
-                  </div>
-                  <div className="flex items-center text-slate-600">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Duration: {formatTime(result.timeSpent)}
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Saved: {formatDate(report.createdAt)}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" /> Overall Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>{report.data && report.data.testTitle ? report.data.testTitle : '-'}</p>
+        </CardContent>
+      </Card>
 
-        {/* Overview Stats */}
-        <div className={`grid grid-cols-1 ${hasScoring ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-6 mb-8`}>
-          {hasScoring && (
-            <Card className="border-slate-200 bg-white/70 backdrop-blur-sm">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <TrendingUp className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="text-3xl font-bold text-slate-900 mb-1">
-                  {overallPercentage}%
-                </div>
-                <div className="text-sm text-slate-600">Overall Score</div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="border-slate-200 bg-white/70 backdrop-blur-sm">
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle className="w-6 h-6 text-emerald-600" />
-              </div>
-              <div className="text-3xl font-bold text-slate-900 mb-1">
-                {hasScoring ? `${result.totalScore}/${result.totalQuestions}` : result.sections.length}
-              </div>
-              <div className="text-sm text-slate-600">{hasScoring ? 'Questions' : 'Sections'}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200 bg-white/70 backdrop-blur-sm">
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Clock className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="text-3xl font-bold text-slate-900 mb-1">
-                {formatTime(result.timeSpent)}
-              </div>
-              <div className="text-sm text-slate-600">Time Taken</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200 bg-white/70 backdrop-blur-sm">
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <FileText className="w-6 h-6 text-orange-600" />
-              </div>
-              <div className="text-3xl font-bold text-slate-900 mb-1">
-                {result.sections.length}
-              </div>
-              <div className="text-sm text-slate-600">Sections</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sections */}
-        <div className="space-y-6">
-          {result.sections.map((section, index) => (
-            <Card key={section.sectionId} className="border-slate-200 bg-white/70 backdrop-blur-sm">
-              <CardHeader className="bg-slate-50/70">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl text-slate-900">{section.sectionName}</CardTitle>
-                    <CardDescription className="text-slate-600">
-                      {section.sectionType === 'score' ? 'Score-based Assessment' : 'Tag-based Assessment'}
-                    </CardDescription>
-                  </div>
-                  {section.sectionType === 'score' && section.percentage && (
-                    <Badge className={getScoreBadge(section.percentage).class} variant="secondary">
-                      {getScoreBadge(section.percentage).label}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-6">
-                {section.sectionType === 'score' ? (
-                  <div className="flex items-center justify-between flex-wrap gap-6">
-                    <div className="flex-1 min-w-64">
-                      <div className={`text-5xl font-bold mb-3 ${getScoreColor(section.percentage!)}`}>
-                        {section.score}/{section.totalQuestions}
-                      </div>
-                      <div className="text-xl text-slate-600 mb-4">
-                        {section.percentage}% Correct
-                      </div>
-                      <Progress value={section.percentage} className="h-4 mb-4" />
-                      <p className="text-slate-600">
-                        You answered {section.score} questions correctly out of {section.totalQuestions} total questions in this section.
-                      </p>
-                    </div>
-                    <div className="w-72 h-72 bg-slate-50 rounded-2xl flex items-center justify-center">
-                      <div className="text-center text-slate-500">
-                        <Target className="w-16 h-16 mx-auto mb-4" />
-                        <div className="space-y-2">
-                          <div className="text-lg font-semibold">Performance Breakdown</div>
-                          <div className="text-emerald-600 font-medium">✓ Correct: {section.score}</div>
-                          <div className="text-rose-600 font-medium">✗ Incorrect: {section.totalQuestions! - section.score!}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex gap-8 flex-wrap">
-                    <div className="flex-1 min-w-80">
-                      <h3 className="text-xl font-semibold mb-6 text-slate-900">Response Distribution</h3>
-                      <div className="space-y-4">
-                        {section.tags?.map((tag, tagIndex) => (
-                          <div key={tagIndex} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="flex items-center space-x-4">
-                              <div 
-                                className="w-6 h-6 rounded-full shadow-sm border-2 border-white" 
-                                style={{ backgroundColor: tag.color }}
-                              ></div>
-                              <span className="font-medium text-slate-900 text-lg">{tag.tagName}</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-3xl font-bold" style={{ color: tag.color }}>
-                                {tag.tagCount}
-                              </span>
-                              <div className="text-sm text-slate-600">responses</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="w-80 h-80 bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                      <div className="text-lg font-semibold mb-4 text-center">Personality Profile</div>
-                      {section.tags && section.tags.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="85%">
-                          <PieChart>
-                            <Pie
-                              data={section.tags}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={40}
-                              outerRadius={100}
-                              paddingAngle={2}
-                              dataKey="tagCount"
-                              nameKey="tagName"
-                            >
-                              {section.tags?.map((tag, index) => (
-                                <Cell key={`cell-${index}`} fill={tag.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              formatter={(value, name) => [`${value} responses`, name]}
-                              labelStyle={{ color: '#374151' }}
-                            />
-                            <Legend 
-                              verticalAlign="bottom" 
-                              height={36}
-                              wrapperStyle={{ fontSize: '12px' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center text-slate-500">
-                            <Brain className="w-16 h-16 mx-auto mb-4" />
-                            <p className="text-sm">No tag data available</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Footer Info */}
-        <div className="mt-12">
-          <Card className="border-slate-200 bg-white/50 backdrop-blur-sm">
-            <CardContent className="p-8 text-center">
-              <div className="space-y-3">
-                <p className="text-slate-600">
-                  Test completed on <span className="font-medium">{formatDate(result.completedAt)}</span>
-                </p>
-                <p className="text-sm text-slate-500">
-                  Generated using Template Version {result.templateVersion} • 
-                  Report ID: {report.id} • 
-                  Saved on {formatDate(report.createdAt)}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Sections */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {sectionsContent}
       </div>
     </div>
-  )
+  );
 }

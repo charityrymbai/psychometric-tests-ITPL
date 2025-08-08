@@ -324,6 +324,13 @@ export default function MultiGeneratedResultsPage() {
 
         console.log(`Saving section ${index + 1}:`, sectionResult)
 
+        // Get user_id from cookie
+        const getCookieValue = (name: string) => {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? match[2] : null;
+        };
+        const userId = getCookieValue('user_id');
+
         const response = await fetch(`${BACKEND_URL}/reports/create`, {
           method: 'POST',
           headers: {
@@ -331,7 +338,8 @@ export default function MultiGeneratedResultsPage() {
           },
           body: JSON.stringify({
             data: sectionResult,
-            version: 0
+            version: 0,
+            user_id: userId ? Number(userId) : undefined
           }),
         })
 
