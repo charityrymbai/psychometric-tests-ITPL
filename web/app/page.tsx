@@ -35,8 +35,6 @@ export default function HomePage() {
       router.push('/user')
     } else if (userId.startsWith('temp_')) {
       // If it's a temporary ID, we'll still allow access but show a warning
-      console.log('Using temporary user ID - proceeding with limited functionality');
-      setApiError("Using temporary user ID. Some features may be limited. Please update your profile to create a permanent account.");
       setLoading(false);
     } else {
       // Verify the user exists in the API
