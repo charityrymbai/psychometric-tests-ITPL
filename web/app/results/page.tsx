@@ -67,6 +67,7 @@ interface ReportSummary {
   totalQuestions: number
   version: number
   created_at: string
+  isSingleOptionCorrect?: boolean | null
 }
 
 export default function ResultsPage() {
