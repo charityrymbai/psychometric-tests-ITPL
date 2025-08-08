@@ -445,12 +445,17 @@ export default function ResultsPage() {
                   
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Score:</span>
-                        <span className={`font-bold ${getScoreColor(overallPercentage)}`}>
-                          {overallPercentage}%
-                        </span>
-                      </div>
+                      {
+                        report.isSingleOptionCorrect? 
+                          (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-600">Score:</span>
+                              <span className={`font-bold ${getScoreColor(overallPercentage)}`}>
+                                {overallPercentage}%
+                              </span>
+                            </div>
+                          ) : <></>
+                      }
                       
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Questions:</span>

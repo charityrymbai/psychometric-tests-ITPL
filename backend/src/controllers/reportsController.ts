@@ -1,3 +1,7 @@
+import * as reportsService from '../services/reportsService.js';
+import { CreateReportSchema } from '../zod/reports.js';
+import { Request, Response } from 'express';
+
 // Get reports by user_id
 export const getReportsByUserId = async (req: Request, res: Response) => {
   try {
@@ -27,9 +31,6 @@ export const getReportsByUserId = async (req: Request, res: Response) => {
     });
   }
 };
-import * as reportsService from '../services/reportsService.js';
-import { CreateReportSchema } from '../zod/reports.js';
-import { Request, Response } from 'express';
 
 export const createReport = async (req: Request, res: Response) => {
   try {

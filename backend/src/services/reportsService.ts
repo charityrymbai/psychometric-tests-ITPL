@@ -3,22 +3,66 @@ export const getReportsByUserId = async (userId: number) => {
   try {
     const db = await dbPromise;
     const [rows] = await db.execute(
-      `SELECT id, 
-              JSON_EXTRACT(data, '$.testTitle') as testTitle, 
-              JSON_EXTRACT(data, '$.groupName') as groupName,
-              JSON_EXTRACT(data, '$.completedAt') as completedAt,
-              JSON_EXTRACT(data, '$.totalScore') as totalScore,
-              JSON_EXTRACT(data, '$.totalQuestions') as totalQuestions,
-              version, created_at
-      FROM reports_generated 
-      WHERE user_id = ?
-      ORDER BY created_at DESC`,
+      `SELECT id, data, version, created_at FROM reports_generated WHERE user_id = ? ORDER BY created_at DESC`,
       [userId]
     );
+    // Map each report to include required fields and isSingleOptionCorrect
+    const reports = (rows as any[]).map((report) => {
+      let parsedData;
+      try {
+        parsedData = typeof report.data === 'string' ? JSON.parse(report.data) : report.data;
+      } catch (e) {
+        parsedData = {};
+      }
+
+      // Calculate totalQuestions if it's 0 or missing (for backward compatibility)
+      let totalQuestions = parsedData.totalQuestions;
+      if (!totalQuestions && Array.isArray(parsedData.sections)) {
+        totalQuestions = parsedData.sections.reduce((sum: number, section: any) => {
+          if (Array.isArray(section.questions)) {
+            return sum + section.questions.length;
+          } else if (typeof section.totalQuestions === 'number') {
+            return sum + section.totalQuestions;
+          } else if (Array.isArray(section.tags)) {
+            const tagCountSum = section.tags.reduce((tagSum: number, tag: any) => 
+              tagSum + (typeof tag.tagCount === 'number' ? tag.tagCount : 0), 0);
+            return sum + tagCountSum;
+          }
+          return sum;
+        }, 0);
+      }
+
+      // Calculate totalScore (attempted questions) if it's 0 or missing (for backward compatibility)
+      let totalScore = parsedData.totalScore;
+      if (!totalScore && Array.isArray(parsedData.sections)) {
+        totalScore = parsedData.sections.reduce((sum: number, section: any) => {
+          if (section.sectionType === 'score' && typeof section.score === 'number') {
+            return sum + section.score;
+          } else if (Array.isArray(section.tags)) {
+            const tagCountSum = section.tags.reduce((tagSum: number, tag: any) => 
+              tagSum + (typeof tag.tagCount === 'number' ? tag.tagCount : 0), 0);
+            return sum + tagCountSum;
+          }
+          return sum;
+        }, 0);
+      }
+
+      return {
+        id: report.id,
+        testTitle: parsedData.testTitle,
+        groupName: parsedData.groupName,
+        completedAt: parsedData.completedAt,
+        totalScore: totalScore,
+        totalQuestions: totalQuestions,
+        version: report.version,
+        created_at: report.created_at,
+        isSingleOptionCorrect: parsedData.isSingleOptionCorrect ?? null,
+      };
+    });
     return {
       success: true,
       message: "Reports retrieved successfully",
-      data: rows,
+      data: reports,
     };
   } catch (error) {
     console.error("Error retrieving reports by userId:", error);
@@ -34,6 +78,37 @@ import { TestResult } from '../zod/reports.js';
 
 export const createReport = async (data: TestResult, version: number = 0, user_id?: number) => {
   try {
+    // Calculate totalQuestions from sections
+    if (Array.isArray(data.sections)) {
+      data.totalQuestions = data.sections.reduce((sum, section) => {
+        if (Array.isArray((section as any).questions)) {
+          return sum + (section as any).questions.length;
+        } else if (typeof section.totalQuestions === 'number') {
+          return sum + section.totalQuestions;
+        } else if (Array.isArray(section.tags)) {
+          // For tag-based sections, sum tagCount for each tag
+          const tagCountSum = section.tags.reduce((tagSum, tag) => tagSum + (typeof tag.tagCount === 'number' ? tag.tagCount : 0), 0);
+          return sum + tagCountSum;
+        }
+        return sum;
+      }, 0);
+    }
+
+    // Calculate totalScore (attempted questions) from sections
+    if (Array.isArray(data.sections)) {
+      data.totalScore = data.sections.reduce((sum, section) => {
+        if (section.sectionType === 'score' && typeof section.score === 'number') {
+          // For score-based sections, use the score field
+          return sum + section.score;
+        } else if (Array.isArray(section.tags)) {
+          // For tag-based sections, sum all tagCount values (represents answered questions)
+          const tagCountSum = section.tags.reduce((tagSum, tag) => tagSum + (typeof tag.tagCount === 'number' ? tag.tagCount : 0), 0);
+          return sum + tagCountSum;
+        }
+        return sum;
+      }, 0);
+    }
+
     const db = await dbPromise;
     // Always stringify data to ensure valid JSON
     const safeData = JSON.stringify(typeof data === 'string' ? JSON.parse(data) : data);
